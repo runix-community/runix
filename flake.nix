@@ -19,8 +19,9 @@
             (import ./pkgs/libraries.nix)
             (final: prev: {
               procps = prev.procps.override { withSystemd = false; };
-              linux-pam = prev.linux-pam.override { withLogind = false; }
-                // { outputs = [ "out" ]; };
+              linux-pam = (prev.linux-pam.override { withLogind = false; }).overrideAttrs (o: {
+                outputs = [ "out" ];
+              });
               util-linux = prev.util-linux.override {
                 systemdSupport = false;
                 pam = final.linux-pam;
