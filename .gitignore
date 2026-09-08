@@ -1,0 +1,24 @@
+result
+result-*
+.nixos-test-history
+*.qcow2
+*.nix-db/
+*_grim.png
+
+# Local VM state and source copies
+runix-vm-source/
+vm-source/
+*.img
+*.iso
+
+# Nix and editor state
+.direnv/
+.envrc.local
+nix-result
+result-vm
+
+# Local secrets
+secrets/
+*.age
+*.key
+*.pem

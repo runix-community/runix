@@ -1,0 +1,20 @@
+{
+  imports = [
+    ./core.nix
+    ./filesystems.nix
+    ./runit.nix
+    ./initrd.nix
+    ./bootloader.nix
+    ./generation.nix
+    ./management.nix
+    ./services
+    ./programs
+    ./hardware
+    ./mdevd.nix
+    ./regional.nix
+    ./session-services.nix
+    ./desktop.nix
+    ./zfs.nix
+    ./virtual-machine.nix
+  ];
+}

@@ -1,0 +1,57 @@
+From: Finix contributors <https://github.com/finix-community/finix>
+Subject: [PATCH] alsa: support device enumeration without udev initialization
+
+libudev-zero exposes kernel uevents from mdevd, which does not add udev's
+SOUND_INITIALIZED property.  Process enumerated sound devices directly and
+also process their parent, matching the mdevd/libudev-zero integration from
+Finix commit 969a84cce88220a4f02a9aa2066dd7d07eab0eea:
+https://raw.githubusercontent.com/finix-community/finix/969a84cce88220a4f02a9aa2066dd7d07eab0eea/modules/programs/pipewire/pipewire.patch
+
+Copied from Finix.  Its COPYING at the referenced commit grants the following
+MIT licence notice, retained here for this copied patch:
+
+Copyright (c) 2003-2025 Eelco Dolstra and the Nixpkgs/NixOS contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions: The above copyright
+notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
+
+--- a/spa/plugins/alsa/alsa-udev.c
++++ b/spa/plugins/alsa/alsa-udev.c
+@@ -164,9 +164,6 @@ static unsigned int get_card_nr(struct impl *this, struct udev_device *udev_devi
+ 	if ((str = udev_device_get_property_value(udev_device, "SOUND_CLASS")) && spa_streq(str, "modem"))
+ 		return SPA_ID_INVALID;
+ 
+-	if (udev_device_get_property_value(udev_device, "SOUND_INITIALIZED") == NULL)
+-		return SPA_ID_INVALID;
+-
+ 	if ((str = udev_device_get_property_value(udev_device, "DEVPATH")) == NULL)
+ 		return SPA_ID_INVALID;
+@@ -970,7 +967,7 @@ static int enum_cards(struct impl *this)
+ 
+ 	for (udev_devices = udev_enumerate_get_list_entry(enumerate); udev_devices;
+ 			udev_devices = udev_list_entry_get_next(udev_devices)) {
+-		struct udev_device *udev_device;
++		struct udev_device *udev_device, *pdev;
+ 
+ 		udev_device = udev_device_new_from_syspath(this->udev,
+ 		                                           udev_list_entry_get_name(udev_devices));
+@@ -979,6 +976,13 @@ static int enum_cards(struct impl *this)
+ 
+ 		process_udev_device(this, ACTION_CHANGE, udev_device);
+ 
++		pdev = udev_device_get_parent(udev_device);
++
++		if (pdev)
++			process_udev_device(this, ACTION_CHANGE, pdev);
++
++		/* no need to unref pdev as udev_device_unref will free the parent as well */
++
+ 		udev_device_unref(udev_device);
+ 	}
+ 	udev_enumerate_unref(enumerate);
