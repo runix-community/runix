@@ -16,7 +16,7 @@
         import nixpkgs {
           inherit system;
           overlays = [
-            (import ./pkgs/no-systemd-libraries.nix)
+            (import ./pkgs/libraries.nix)
             (final: prev: {
               procps = prev.procps.override { withSystemd = false; };
               linux-pam = prev.linux-pam.override { withLogind = false; };
@@ -29,10 +29,10 @@
                 pam = final.linux-pam;
               };
             })
-            (import ./pkgs/no-systemd-services.nix)
-            (import ./pkgs/no-systemd-desktop.nix)
-            (import ./pkgs/no-systemd-qt.nix)
-            (import ./pkgs/no-systemd-sddm.nix)
+            (import ./pkgs/services.nix)
+            (import ./pkgs/desktop.nix)
+            (import ./pkgs/qt.nix)
+            (import ./pkgs/sddm.nix)
           ];
         };
     in

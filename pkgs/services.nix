@@ -24,7 +24,7 @@ final: prev: {
 
   # An empty unit directory bypasses Meson's systemd dependency lookup.
   power-profiles-daemon = prev.power-profiles-daemon.overrideAttrs (old: {
-    patches = (old.patches or [ ]) ++ [ ./power-profiles-daemon-no-systemd-unit.patch ];
+    patches = (old.patches or [ ]) ++ [ ./power-profiles-daemon-unit.patch ];
     buildInputs = final.lib.filter (input: input != prev.systemd) old.buildInputs;
     mesonFlags =
       final.lib.filter (flag: !final.lib.hasPrefix "-Dsystemdsystemunitdir=" flag) old.mesonFlags
