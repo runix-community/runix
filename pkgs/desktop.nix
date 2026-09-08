@@ -75,4 +75,16 @@ in
     libinput = final.libinput;
     seatd = final.seatd;
   };
+
+  # Xwayland links libsystemd unconditionally on Linux; drop it and build
+  # without logind integration (mdevd systems use elogind or none).
+  xwayland = prev.xwayland.overrideAttrs (old: {
+    buildInputs = prev.lib.filter (input: input != prev.systemd) old.buildInputs;
+  });
+
+  # uwsm is a systemd session wrapper; satisfy hyprland's build dependency
+  # without pulling systemd into the closure.
+  uwsm = prev.uwsm.overrideAttrs (old: {
+    buildInputs = prev.lib.filter (input: input != prev.systemd) old.buildInputs;
+  });
 }

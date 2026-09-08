@@ -23,4 +23,9 @@ final: prev: {
       };
     }
   );
+
+  # libudev-zero has no udev_queue API; build without udev sync/rules.
+  lvm2 = prev.lvm2.override {
+    udevSupport = false;
+  };
 }

@@ -18,6 +18,10 @@ final: prev: {
     udev = final.udev;
   };
 
+  modemmanager = prev.modemmanager.override {
+    withSystemd = false;
+  };
+
   docker = prev.docker.override {
     withSystemd = false;
   };

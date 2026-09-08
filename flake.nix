@@ -20,7 +20,7 @@
             (final: prev: {
               procps = prev.procps.override { withSystemd = false; };
               linux-pam = (prev.linux-pam.override { withLogind = false; }).overrideAttrs (o: {
-                outputs = [ "out" ];
+                outputs = [ "out" "scripts" ];
               });
               util-linux = prev.util-linux.override {
                 systemdSupport = false;
