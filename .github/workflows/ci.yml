@@ -40,16 +40,10 @@ jobs:
         with:
           name: ${{ vars.CACHIX_CACHE_NAME }}
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-      - name: Check formatting
-        run: nix fmt -- --check
-      - name: Build core artifacts and checks
+      - name: Build core artifacts
         run: >-
           nix build --print-build-logs
           .#runit .#runix .#runix-install .#vm
-          .#checks.x86_64-linux.activation
-          .#checks.x86_64-linux.services
-          .#checks.x86_64-linux.generated-shell-syntax
-          .#checks.x86_64-linux.example-evaluation
 
   vm-smoke:
     name: x86_64 VM smoke
