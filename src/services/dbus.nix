@@ -34,7 +34,6 @@ in
           ${pkgs.dbus}/bin/dbus-uuidgen > /var/lib/dbus/machine-id
         fi
         ln -sfn /var/lib/dbus/machine-id /etc/machine-id
-        ln -sfn ${pkgs.dbus}/share/dbus-1/system.conf /etc/dbus-1/system.conf
         for package in ${lib.escapeShellArgs cfg.dbusPackages}; do
           for policy in "$package"/share/dbus-1/system.d/*; do
             [ -e "$policy" ] || continue
