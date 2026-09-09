@@ -12,6 +12,9 @@ let
       fsType = "";
       options = [ ];
     };
+  rootFileSystemModule = lib.optional (
+    root.fsType != "" && root.fsType != "auto" && root.fsType != "zfs"
+  ) root.fsType;
   kernel = cfg.kernel.package;
   modulesTree = pkgs.aggregateModules ([ (kernel.modules or kernel) ] ++ cfg.kernel.modulePackages);
   emptyFirmware = pkgs.runCommand "runix-empty-firmware" { } ''
@@ -279,14 +282,20 @@ in
   };
 
   config.runix = {
-    initrd.modules = lib.mkBefore [
-      "9p"
-      "9pnet"
-      "9pnet_virtio"
-      "ext4"
-      "virtio_blk"
-      "virtio_pci"
-    ];
+    initrd = {
+      modules = lib.mkBefore (
+        [
+          "9p"
+          "9pnet"
+          "9pnet_virtio"
+          "ext4"
+          "virtio_blk"
+          "virtio_pci"
+        ]
+        ++ rootFileSystemModule
+      );
+      loadModules = lib.mkBefore rootFileSystemModule;
+    };
     build = {
       inherit initrd modulesTree firmware;
     };
