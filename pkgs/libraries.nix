@@ -31,6 +31,11 @@ final: prev: {
     doCheck = false;
   });
 
+  # The D-Bus-backed collection test is flaky on shared CI runners.
+  libsecret = prev.libsecret.overrideAttrs (old: {
+    doCheck = false;
+  });
+
   # libudev-zero has no udev_queue API; build without udev sync/rules.
   lvm2 = prev.lvm2.override {
     udevSupport = false;

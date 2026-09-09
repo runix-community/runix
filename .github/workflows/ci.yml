@@ -24,22 +24,20 @@ jobs:
       - uses: cachix/install-nix-action@b85815f71a6de0ddee80b8a80a98d43f4bcc66c7 # v31
       - name: Configure read-only Cachix
         if: >-
-          vars.CACHIX_CACHE_NAME != '' &&
           !((github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
             github.ref == format('refs/heads/{0}', github.event.repository.default_branch))
         uses: cachix/cachix-action@97e5ff84d02b3b4f9936339f767e17f03c9252ed # v16
         with:
-          name: ${{ vars.CACHIX_CACHE_NAME }}
+          name: runix
           skipPush: true
       - name: Configure publishing Cachix
         if: >-
-          vars.CACHIX_CACHE_NAME != '' &&
           (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
           github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
         uses: cachix/cachix-action@97e5ff84d02b3b4f9936339f767e17f03c9252ed # v16
         with:
-          name: ${{ vars.CACHIX_CACHE_NAME }}
-          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          name: runix
+          authToken: ${{ secrets.RUNIX }}
       - name: Build core artifacts
         run: >-
           nix build --print-build-logs
@@ -51,7 +49,7 @@ jobs:
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       max-parallel: 2
@@ -63,11 +61,10 @@ jobs:
           persist-credentials: false
       - uses: cachix/install-nix-action@b85815f71a6de0ddee80b8a80a98d43f4bcc66c7 # v31
       - name: Configure publishing Cachix
-        if: vars.CACHIX_CACHE_NAME != ''
         uses: cachix/cachix-action@97e5ff84d02b3b4f9936339f767e17f03c9252ed # v16
         with:
-          name: ${{ vars.CACHIX_CACHE_NAME }}
-          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          name: runix
+          authToken: ${{ secrets.RUNIX }}
       - name: Build desktop package
         env:
           PACKAGE: ${{ matrix.package }}
