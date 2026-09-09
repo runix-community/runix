@@ -3,10 +3,18 @@ final: prev: {
     enableSystemd = false;
   };
 
-  networkmanager = prev.networkmanager.override {
-    withSystemd = false;
-    udev = final.udev;
-  };
+  networkmanager = (
+    prev.networkmanager.override {
+      withSystemd = false;
+      udev = final.udev;
+    }
+  ).overrideAttrs (
+    old: {
+      mesonFlags =
+        (old.mesonFlags or [ ])
+        ++ [ "-Dsystemdsystemgeneratordir=no" ];
+    }
+  );
 
   # BlueZ infers systemd support from its udev provider.
   bluez = prev.bluez.override {
