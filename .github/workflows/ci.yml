@@ -37,7 +37,7 @@ jobs:
         uses: cachix/cachix-action@97e5ff84d02b3b4f9936339f767e17f03c9252ed # v16
         with:
           name: runix
-          authToken: ${{ secrets.RUNIX }}
+          authToken: ${{ secrets.runix }}
       - name: Build core artifacts
         run: >-
           nix build --print-build-logs
@@ -68,7 +68,7 @@ jobs:
         uses: cachix/cachix-action@97e5ff84d02b3b4f9936339f767e17f03c9252ed # v16
         with:
           name: runix
-          authToken: ${{ secrets.RUNIX }}
+          authToken: ${{ secrets.runix }}
       - name: Build desktop package
         env:
           PACKAGES: ${{ matrix.packages }}
