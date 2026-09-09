@@ -37,6 +37,10 @@ let
       echo "runix: boot mount point does not exist: $boot" >&2
       exit 1
     fi
+    boot_path=${lib.escapeShellArg "${lib.removeSuffix "/" loader.mountPoint}/runix"}
+    if ${pkgs.util-linux}/bin/mountpoint -q "$boot"; then
+      boot_path=/runix
+    fi
 
     root_params=${lib.escapeShellArg configuredRootParams}
     if [ -r "$root/etc/fstab" ]; then
@@ -125,8 +129,8 @@ let
       fi
       ${pkgs.coreutils}/bin/printf '%s\n' \
         "menuentry '$title' {" \
-        "  linux /runix/$name-kernel init=$system/init $generation_params $generation_root" \
-        "  initrd /runix/$name-initrd" \
+        "  linux $boot_path/$name-kernel init=$system/init $generation_params $generation_root" \
+        "  initrd $boot_path/$name-initrd" \
         '}' >>"$config_file"
       if [ "$first" -eq 1 ]; then
         ${pkgs.coreutils}/bin/printf '%s\n' "submenu 'Other generations' {" >>"$config_file"
@@ -151,7 +155,10 @@ let
             --no-nvram
           ''
         else
-          lib.escapeShellArg loader.grub.device
+          ''
+            --target=i386-pc \
+            ${lib.escapeShellArg loader.grub.device}
+          ''
       }
   '';
 
@@ -197,8 +204,8 @@ let
       ${pkgs.coreutils}/bin/printf '%s\n' \
         "$title" \
         'protocol: linux' \
-        "path: boot():/runix/$name-kernel" \
-        "module_path: boot():/runix/$name-initrd" \
+        "path: boot():$boot_path/$name-kernel" \
+        "module_path: boot():$boot_path/$name-initrd" \
         "cmdline: init=$system/init $generation_params $generation_root" >>"$config_file"
       [ "$first" -ne 1 ] || first=0
     done

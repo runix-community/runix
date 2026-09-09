@@ -126,12 +126,12 @@ writeShellApplication {
     trap 'exit 143' TERM
 
     echo "runix-install: building configuration $host"
-    system=$(nix build --out-link "$work/system" --print-out-paths "$configuration.system" "''${nix_args[@]}")
+    system=$(${lib.getExe nix} --extra-experimental-features "nix-command flakes" build --out-link "$work/system" --print-out-paths "$configuration.system" "''${nix_args[@]}")
     [ -d "$system" ] || die "system build did not produce a directory"
     ${bash}/bin/bash ${./preflight.sh} "$root" "$system/install-spec.json" "$install_bootloader" "$activate"
     if [ "$install_bootloader" -eq 1 ]; then
       echo "runix-install: building the configured bootloader installer"
-      installer=$(nix build --out-link "$work/bootloader" --print-out-paths "$configuration.installBootLoader" "''${nix_args[@]}")
+      installer=$(${lib.getExe nix} --extra-experimental-features "nix-command flakes" build --out-link "$work/bootloader" --print-out-paths "$configuration.installBootLoader" "''${nix_args[@]}")
     fi
 
     if [ ! -s "$root/etc/fstab" ]; then
@@ -143,7 +143,7 @@ writeShellApplication {
 
     mkdir -p "$root/nix"
     echo "runix-install: installing the configured system closure"
-    nix copy --to "$store" "$system"
+    ${lib.getExe nix} --extra-experimental-features nix-command copy --no-check-sigs --to "$store" "$system"
 
     if [ "$activate" -eq 1 ]; then
       echo "runix-install: preparing users, configuration, and service state offline"
@@ -156,7 +156,7 @@ writeShellApplication {
     nix-env \
       --store "$store" \
       --option build-users-group "" \
-      --profile /nix/var/nix/profiles/system \
+      --profile "$root/nix/var/nix/profiles/system" \
       --set "$system"
 
     if [ "$install_bootloader" -eq 1 ]; then
