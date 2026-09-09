@@ -6,13 +6,14 @@
 }:
 let
   cfg = config.hardware.input;
+  desktopPackages = import ../../pkgs/desktop.nix { inherit pkgs; };
 in
 {
   options.hardware.input = {
     enable = lib.mkEnableOption "libinput and input device access";
     package = lib.mkOption {
       type = lib.types.package;
-      default = pkgs.libinput;
+      default = desktopPackages.libinput;
       description = "Input stack package.";
     };
     group = lib.mkOption {

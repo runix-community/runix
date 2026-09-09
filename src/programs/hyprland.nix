@@ -6,7 +6,7 @@
 }:
 let
   cfg = config.programs.hyprland;
-  defaultPackage = pkgs.callPackage ../../pkgs/window-managers/hyprland.nix { };
+  defaultPackage = (import ../../pkgs/desktop.nix { inherit pkgs; }).hyprland;
 in
 {
   options.programs.hyprland = {

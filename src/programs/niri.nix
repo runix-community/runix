@@ -6,13 +6,14 @@
 }:
 let
   cfg = config.programs.niri;
+  defaultPackage = (import ../../pkgs/desktop.nix { inherit pkgs; }).niri;
 in
 {
   options.programs.niri = {
     enable = lib.mkEnableOption "the Niri scrollable-tiling Wayland compositor";
     package = lib.mkOption {
       type = lib.types.package;
-      default = pkgs.callPackage ../../pkgs/window-managers/niri.nix { };
+      default = defaultPackage;
       description = "Niri package.";
     };
   };

@@ -6,13 +6,14 @@
 }:
 let
   cfg = config.programs.labwc;
+  defaultPackage = (import ../../pkgs/desktop.nix { inherit pkgs; }).labwc;
 in
 {
   options.programs.labwc = {
     enable = lib.mkEnableOption "the Labwc Wayland compositor";
     package = lib.mkOption {
       type = lib.types.package;
-      default = pkgs.callPackage ../../pkgs/window-managers/labwc.nix { };
+      default = defaultPackage;
       description = "Labwc package.";
     };
     extraArgs = lib.mkOption {

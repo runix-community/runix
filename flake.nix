@@ -15,27 +15,6 @@
         system:
         import nixpkgs {
           inherit system;
-          overlays = [
-            (import ./pkgs/libraries.nix)
-            (final: prev: {
-              procps = prev.procps.override { withSystemd = false; };
-              linux-pam = (prev.linux-pam.override { withLogind = false; }).overrideAttrs (o: {
-                outputs = [ "out" "scripts" ];
-              });
-              util-linux = prev.util-linux.override {
-                systemdSupport = false;
-                pam = final.linux-pam;
-              };
-              util-linuxMinimal = prev.util-linuxMinimal.override {
-                systemdSupport = false;
-                pam = final.linux-pam;
-              };
-            })
-            (import ./pkgs/services.nix)
-            (import ./pkgs/desktop.nix)
-            (import ./pkgs/qt.nix)
-            (import ./pkgs/sddm.nix)
-          ];
         };
     in
     {
@@ -43,15 +22,14 @@
         system:
         let
           pkgs = mkPkgs system;
+          desktopPackages = import ./pkgs/desktop.nix { inherit pkgs; };
           runit = pkgs.callPackage ./pkgs/runit { };
           runix = pkgs.callPackage ./pkgs/runix { };
           runix-install = pkgs.callPackage ./pkgs/runix-install { };
-          bspwm = pkgs.callPackage ./pkgs/window-managers/bspwm.nix { };
-          hyprland = pkgs.callPackage ./pkgs/window-managers/hyprland.nix { };
-          labwc = pkgs.callPackage ./pkgs/window-managers/labwc.nix { };
-          niri = pkgs.callPackage ./pkgs/window-managers/niri.nix { };
-          qtile = pkgs.callPackage ./pkgs/window-managers/qtile.nix { };
-          sxhkd = pkgs.callPackage ./pkgs/window-managers/sxhkd.nix { };
+          bspwm = pkgs.bspwm;
+          inherit (desktopPackages) hyprland labwc niri;
+          qtile = pkgs.python3Packages.qtile;
+          sxhkd = pkgs.sxhkd;
           consoleSource = pkgs.writeText "runix-console.c" ''
             #include <errno.h>
             #include <fcntl.h>

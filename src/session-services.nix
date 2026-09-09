@@ -7,6 +7,7 @@
 let
   pipewire = config.services.pipewire;
   runit = config.runix.runit.package;
+  desktopPackages = import ../pkgs/desktop.nix { inherit pkgs; };
 
   pipewireRun = pkgs.writeShellScript "runix-user-pipewire" ''
     exec ${pipewire.package}/bin/pipewire
@@ -67,7 +68,7 @@ in
       enable = lib.mkEnableOption "per-user PipeWire managed by runit";
       package = lib.mkOption {
         type = lib.types.package;
-        default = pkgs.pipewire;
+        default = desktopPackages.pipewire;
         description = "PipeWire package.";
       };
       pulse.enable = lib.mkOption {
@@ -83,7 +84,7 @@ in
         };
         package = lib.mkOption {
           type = lib.types.package;
-          default = pkgs.wireplumber;
+          default = desktopPackages.wireplumber;
           description = "WirePlumber package.";
         };
       };

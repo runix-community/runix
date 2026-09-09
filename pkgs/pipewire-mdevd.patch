@@ -30,8 +30,8 @@ substantial portions of the Software.
 -	if (udev_device_get_property_value(udev_device, "SOUND_INITIALIZED") == NULL)
 -		return SPA_ID_INVALID;
 -
- 	if ((str = udev_device_get_property_value(udev_device, "DEVPATH")) == NULL)
- 		return SPA_ID_INVALID;
+	if ((str = udev_device_get_property_value(udev_device, "DEVPATH")) == NULL)
+		return SPA_ID_INVALID;
 @@ -970,7 +967,7 @@ static int enum_cards(struct impl *this)
  
  	for (udev_devices = udev_enumerate_get_list_entry(enumerate); udev_devices;
