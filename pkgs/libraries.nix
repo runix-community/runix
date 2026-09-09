@@ -24,6 +24,13 @@ final: prev: {
     }
   );
 
+  # libgudev's tests link umockdev, which is built against systemd's libudev
+  # and carries versioned symbols (udev_*@LIBUDEV_183) that libudev-zero
+  # does not provide; drop the tests.
+  libgudev = prev.libgudev.overrideAttrs (old: {
+    doCheck = false;
+  });
+
   # libudev-zero has no udev_queue API; build without udev sync/rules.
   lvm2 = prev.lvm2.override {
     udevSupport = false;
