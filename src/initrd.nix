@@ -247,6 +247,10 @@ let
         target = "/bin";
       }
       {
+        source = "${initrdPath}/bin";
+        target = "/sbin";
+      }
+      {
         source = init;
         target = "/init";
       }
