@@ -82,8 +82,8 @@ let
         };
         log = lib.mkOption {
           type = lib.types.bool;
-          default = false;
-          description = "Whether to capture output with svlogd.";
+          default = name != "console";
+          description = "Whether to capture output with svlogd; disabled by default for the console service.";
         };
       };
     }
