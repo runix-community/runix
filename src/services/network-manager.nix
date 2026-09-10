@@ -9,6 +9,7 @@ let
   networkManagerConfig = pkgs.writeText "runix-NetworkManager.conf" ''
     [main]
     plugins=keyfile
+    dhcp=dhcpcd
 
     [device]
     wifi.scan-rand-mac-address=yes
@@ -24,11 +25,15 @@ in
       }
     ];
     runix.systemServices.dbusPackages = [ pkgs.networkmanager ];
-    runix.packages = [ pkgs.networkmanager ];
+    runix.packages = [
+      pkgs.dhcpcd
+      pkgs.networkmanager
+    ];
     runix.preparationScripts = [
       ''
-        mkdir -p /etc/NetworkManager /var/lib/NetworkManager
+        mkdir -p /etc/NetworkManager /run/NetworkManager /var/lib/NetworkManager
         ln -sfn ${networkManagerConfig} /etc/NetworkManager/NetworkManager.conf
+        ln -sfn /run/NetworkManager/resolv.conf /etc/resolv.conf
       ''
     ];
     runix.services.networkmanager = {
