@@ -144,6 +144,20 @@ let
     password required ${pkgs.linux-pam}/lib/security/pam_unix.so
     session required ${pkgs.linux-pam}/lib/security/pam_unix.so
   '';
+  unixChkpwdWrapperSource = pkgs.writeText "runix-unix-chkpwd-wrapper.c" ''
+    #include <stdio.h>
+    #include <unistd.h>
+
+    int main(int argc, char **argv) {
+      (void)argc;
+      execv("${pkgs.linux-pam}/bin/unix_chkpwd", argv);
+      perror("unix_chkpwd");
+      return 127;
+    }
+  '';
+  unixChkpwdWrapper = pkgs.runCommandCC "runix-unix-chkpwd-wrapper" { } ''
+    $CC -O2 -Wall -Wextra -Werror ${unixChkpwdWrapperSource} -o "$out"
+  '';
 in
 {
   options = {
@@ -274,8 +288,10 @@ in
       ];
       preparationScripts = lib.mkBefore [
         ''
-          mkdir -p /etc/pam.d
+          mkdir -p /etc/pam.d /run/wrappers/bin
           ln -sfn ${pamLogin} /etc/pam.d/login
+          ${pkgs.coreutils}/bin/install -m4755 -o root -g root \
+            ${unixChkpwdWrapper} /run/wrappers/bin/unix_chkpwd
         ''
       ];
       build = {
