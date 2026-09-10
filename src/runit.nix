@@ -122,7 +122,7 @@ let
       ${lib.concatMapStringsSep "\n" (dependency: ''
         ${cfg.runit.package}/bin/sv -w ${toString cfg.runit.serviceTimeout} check ${lib.escapeShellArg "/run/runit/service/${dependency}"} >/dev/null 2>&1
       '') service.after}
-      exec ${
+      exec ${lib.optionalString (name == "console") "${pkgs.util-linux}/bin/setsid --fork --wait "}${
         lib.optionalString (
           service.user != null
         ) "${cfg.runit.package}/bin/chpst -u ${lib.escapeShellArg (serviceIdentity service)} "
