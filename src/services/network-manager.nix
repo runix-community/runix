@@ -6,6 +6,10 @@
 }:
 let
   cfg = config.runix.systemServices.networkManager;
+  networkManager = pkgs.networkmanager.override {
+    udev = pkgs.libudev-zero;
+    withSystemd = false;
+  };
   networkManagerConfig = pkgs.writeText "runix-NetworkManager.conf" ''
     [main]
     plugins=keyfile
@@ -31,11 +35,11 @@ in
     runix.groups.networkmanager.gid = 57;
     runix.kernel.modules = [ "ctr" ];
     runix.systemServices.dbusPackages = [
-      pkgs.networkmanager
+      networkManager
       pkgs.wpa_supplicant
     ];
     runix.packages = [
-      pkgs.networkmanager
+      networkManager
       pkgs.wpa_supplicant
     ];
     runix.preparationScripts = [
@@ -46,12 +50,12 @@ in
       ''
     ];
     runix.services.networkmanager = {
-      command = "${pkgs.networkmanager}/bin/NetworkManager --no-daemon";
+      command = "${networkManager}/bin/NetworkManager --no-daemon";
       after = [
         "dbus"
         "mdevd-coldplug"
       ];
-      check = "${pkgs.networkmanager}/bin/nmcli general status >/dev/null";
+      check = "${networkManager}/bin/nmcli general status >/dev/null";
     };
   };
 }
