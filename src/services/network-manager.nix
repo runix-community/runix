@@ -9,7 +9,7 @@ let
   networkManagerConfig = pkgs.writeText "runix-NetworkManager.conf" ''
     [main]
     plugins=keyfile
-    dhcp=dhcpcd
+    rc-manager=symlink
 
     [device]
     wifi.scan-rand-mac-address=yes
@@ -23,11 +23,20 @@ in
         assertion = config.runix.systemServices.dbus.enable;
         message = "runix.systemServices.networkManager requires runix.systemServices.dbus";
       }
+      {
+        assertion = !config.runix.systemServices.dhcpcd.enable;
+        message = "NetworkManager and dhcpcd cannot manage interfaces at the same time";
+      }
     ];
-    runix.systemServices.dbusPackages = [ pkgs.networkmanager ];
-    runix.packages = [
-      pkgs.dhcpcd
+    runix.groups.networkmanager.gid = 57;
+    runix.kernel.modules = [ "ctr" ];
+    runix.systemServices.dbusPackages = [
       pkgs.networkmanager
+      pkgs.wpa_supplicant
+    ];
+    runix.packages = [
+      pkgs.networkmanager
+      pkgs.wpa_supplicant
     ];
     runix.preparationScripts = [
       ''
@@ -38,7 +47,10 @@ in
     ];
     runix.services.networkmanager = {
       command = "${pkgs.networkmanager}/bin/NetworkManager --no-daemon";
-      after = [ "dbus" ];
+      after = [
+        "dbus"
+        "mdevd-coldplug"
+      ];
       check = "${pkgs.networkmanager}/bin/nmcli general status >/dev/null";
     };
   };

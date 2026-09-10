@@ -31,6 +31,17 @@ Then allow the flake-provided cache configuration when building:
 nix build --accept-flake-config .#vm
 ```
 
+## Networking
+
+`dhcpcd` is currently the recommended network configuration service:
+
+```nix
+runix.systemServices.dhcpcd.enable = true;
+```
+
+Do not enable `dhcpcd` and NetworkManager at the same time, as both services
+would attempt to configure the same network interfaces.
+
 # Credits
 - [finix-project](https://github.com/finix-community/finix.git) provides very useful, helpful anti-systemd patches for some components.
 

@@ -474,6 +474,7 @@ in
       );
 
     runix.packages = lib.mkBefore [ powerCommands ];
+    runix.environmentVariables.SVDIR = lib.mkDefault "/run/runit/service";
     runix.build = {
       inherit
         activation
