@@ -31,16 +31,13 @@ in
       home = "/var/lib/dhcpcd";
       shell = "/bin/false";
     };
-    runix.packages = [
-      pkgs.dhcpcd
-      pkgs.openresolv
-    ];
+    runix.packages = [ pkgs.dhcpcd ];
     runix.preparationScripts = [
       ''
         mkdir -p /run/dhcpcd /var/db/dhcpcd /var/lib/dhcpcd
         chown dhcpcd:dhcpcd /var/db/dhcpcd /var/lib/dhcpcd
         rm -f /etc/resolv.conf
-        touch /etc/resolv.conf
+        printf 'nameserver 1.1.1.1\n' > /etc/resolv.conf
       ''
     ];
     runix.services.dhcpcd = {
