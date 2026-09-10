@@ -6,13 +6,13 @@
 }:
 let
   cfg = config.runix.systemServices.networkManager;
-  networkManager = pkgs.callPackage ../../pkgs/networkmanager { };
   networkManagerConfig = pkgs.writeText "runix-NetworkManager.conf" ''
     [main]
     plugins=keyfile
     rc-manager=symlink
 
     [device]
+    managed=1
     wifi.scan-rand-mac-address=yes
   '';
 in
@@ -32,11 +32,11 @@ in
     runix.groups.networkmanager.gid = 57;
     runix.kernel.modules = [ "ctr" ];
     runix.systemServices.dbusPackages = [
-      networkManager
+      pkgs.networkmanager
       pkgs.wpa_supplicant
     ];
     runix.packages = [
-      networkManager
+      pkgs.networkmanager
       pkgs.wpa_supplicant
     ];
     runix.preparationScripts = [
@@ -47,12 +47,12 @@ in
       ''
     ];
     runix.services.networkmanager = {
-      command = "${networkManager}/bin/NetworkManager --no-daemon";
+      command = "${pkgs.networkmanager}/bin/NetworkManager --no-daemon";
       after = [
         "dbus"
         "mdevd-coldplug"
       ];
-      check = "${networkManager}/bin/nmcli general status >/dev/null";
+      check = "${pkgs.networkmanager}/bin/nmcli general status >/dev/null";
     };
   };
 }
