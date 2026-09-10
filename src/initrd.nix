@@ -15,9 +15,14 @@ let
   rootFileSystemModule = lib.optional (
     root.fsType != "" && root.fsType != "auto" && root.fsType != "zfs"
   ) root.fsType;
-  btrfsChecksumModules = lib.optional (
+  btrfsChecksumModules = lib.optionals (
     builtins.any (fileSystem: fileSystem.fsType == "btrfs") cfg.build.earlyFileSystems
-  ) "crc32c_generic";
+  ) [
+    "crc32c"
+    "xxhash64"
+    "sha256"
+    "blake2b-256"
+  ];
   kernel = cfg.kernel.package;
   modulesTree = pkgs.aggregateModules ([ (kernel.modules or kernel) ] ++ cfg.kernel.modulePackages);
   emptyFirmware = pkgs.runCommand "runix-empty-firmware" { } ''
@@ -298,7 +303,7 @@ in
         ++ rootFileSystemModule
         ++ btrfsChecksumModules
       );
-      loadModules = lib.mkBefore (rootFileSystemModule ++ btrfsChecksumModules);
+      loadModules = lib.mkBefore rootFileSystemModule;
     };
     build = {
       inherit initrd modulesTree firmware;
