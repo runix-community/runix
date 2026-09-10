@@ -6,6 +6,11 @@
 }:
 let
   cfg = config.runix.systemServices;
+  dbusConfig = pkgs.makeDBusConf.override {
+    dbus = pkgs.dbus;
+    suidHelper = "${pkgs.dbus}/libexec/dbus-daemon-launch-helper";
+    serviceDirectories = [ pkgs.dbus ] ++ cfg.dbusPackages;
+  };
 in
 {
   options.runix.systemServices = {
@@ -34,6 +39,7 @@ in
           ${pkgs.dbus}/bin/dbus-uuidgen > /var/lib/dbus/machine-id
         fi
         ln -sfn /var/lib/dbus/machine-id /etc/machine-id
+        ln -sfn ${dbusConfig}/system.conf /etc/dbus-1/system.conf
         for package in ${lib.escapeShellArgs cfg.dbusPackages}; do
           for policy in "$package"/share/dbus-1/system.d/*; do
             [ -e "$policy" ] || continue
@@ -47,7 +53,7 @@ in
       ''
     ];
     runix.services.dbus = {
-      command = "${pkgs.dbus}/bin/dbus-daemon --config-file=${pkgs.dbus}/share/dbus-1/system.conf --nofork --nopidfile";
+      command = "${pkgs.dbus}/bin/dbus-daemon --config-file=${dbusConfig}/system.conf --nofork --nopidfile";
       check = ''
         ${pkgs.dbus}/bin/dbus-send --system --type=method_call --print-reply \
           --dest=org.freedesktop.DBus / org.freedesktop.DBus.ListNames >/dev/null
