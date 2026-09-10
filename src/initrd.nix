@@ -15,6 +15,9 @@ let
   rootFileSystemModule = lib.optional (
     root.fsType != "" && root.fsType != "auto" && root.fsType != "zfs"
   ) root.fsType;
+  btrfsChecksumModules = lib.optional (
+    builtins.any (fileSystem: fileSystem.fsType == "btrfs") cfg.build.earlyFileSystems
+  ) "crc32c_generic";
   kernel = cfg.kernel.package;
   modulesTree = pkgs.aggregateModules ([ (kernel.modules or kernel) ] ++ cfg.kernel.modulePackages);
   emptyFirmware = pkgs.runCommand "runix-empty-firmware" { } ''
@@ -293,8 +296,9 @@ in
           "virtio_pci"
         ]
         ++ rootFileSystemModule
+        ++ btrfsChecksumModules
       );
-      loadModules = lib.mkBefore rootFileSystemModule;
+      loadModules = lib.mkBefore (rootFileSystemModule ++ btrfsChecksumModules);
     };
     build = {
       inherit initrd modulesTree firmware;
