@@ -128,7 +128,8 @@ writeShellApplication {
       --option build-users-group "" build --no-link --print-out-paths "$configuration.system" "''${nix_args[@]}")
     target_system="$root$system"
     [ -d "$target_system" ] || die "system build did not produce a directory in the target store"
-    ${bash}/bin/bash ${./preflight.sh} "$root" "$target_system/install-spec.json" "$install_bootloader" "$activate"
+    install_spec="$root$(${coreutils}/bin/readlink "$target_system/install-spec.json")"
+    ${bash}/bin/bash ${./preflight.sh} "$root" "$install_spec" "$install_bootloader" "$activate"
     if [ "$install_bootloader" -eq 1 ]; then
       echo "runix-install: building the configured bootloader installer"
       installer=$(${lib.getExe nix} --store "$store" --extra-experimental-features "nix-command flakes" \
@@ -159,7 +160,7 @@ writeShellApplication {
 
     if [ "$install_bootloader" -eq 1 ]; then
       echo "runix-install: installing the bootloader"
-      boot=$(jq -r .bootLoader.mountPoint "$target_system/install-spec.json")
+      boot=$(jq -r .bootLoader.mountPoint "$install_spec")
       mkdir -p "$root$boot"
       ${util-linux}/bin/unshare --mount --propagation private \
         ${bash}/bin/bash ${./bootloader-target.sh} "$root" "$installer"
