@@ -266,8 +266,13 @@ let
     ${pkgs.bash}/bin/bash ${./activate-etc.sh} ${etcTree} / ${
       if config.fileSystems == { } then "1" else "0"
     }
+    ln -sfn ${cfg.build.modulesTree}/lib/modules /lib/modules
+    ln -sfn "$system" /run/current-system
     if [ "$RUNIX_OFFLINE" = 0 ]; then
       printf '%s\n' ${lib.escapeShellArg "${pkgs.kmod}/bin/modprobe"} > /proc/sys/kernel/modprobe
+      ${lib.concatMapStringsSep "\n" (
+        module: "${pkgs.kmod}/bin/modprobe ${lib.escapeShellArg module}"
+      ) cfg.kernel.modules}
       ${pkgs.util-linux}/bin/mount -a
     fi
     chmod 0000 /etc/runit/stopit /etc/runit/reboot
@@ -295,8 +300,6 @@ let
     ) cfg.build.normalizedUsers}
     ln -sfn ${pkgs.bashInteractive}/bin/bash /bin/sh
     ln -sfn ${pkgs.coreutils}/bin/env /usr/bin/env
-    ln -sfn ${cfg.build.modulesTree}/lib/modules /lib/modules
-    ln -sfn "$system" /run/current-system
 
     ${lib.concatMapAttrsStringSep "\n" (_: user: ''
       mkdir -p ${lib.escapeShellArg user.home}
@@ -320,9 +323,6 @@ let
     # Never change the live kernel or services during offline installation.
     [ "$RUNIX_OFFLINE" = 0 ] || exit 0
     ${pkgs.busybox}/bin/hostname ${lib.escapeShellArg cfg.hostName}
-    ${lib.concatMapStringsSep "\n" (
-      module: "${pkgs.kmod}/bin/modprobe ${lib.escapeShellArg module}"
-    ) cfg.kernel.modules}
     ${lib.concatStringsSep "\n" cfg.activationScripts}
 
     source=${serviceTree}

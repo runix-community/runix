@@ -3,6 +3,7 @@
     ./core.nix
     ./filesystems.nix
     ./filesystems/btrfs.nix
+    ./filesystems/vfat.nix
     ./runit.nix
     ./initrd.nix
     ./bootloader.nix
