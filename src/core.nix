@@ -177,16 +177,7 @@ in
       kernel = {
         packageSet = lib.mkOption {
           type = lib.types.raw;
-          default = pkgs.linuxPackages.extend (_: super: {
-            kernel = super.kernel.override (args: {
-              structuredExtraConfig = (args.structuredExtraConfig or { }) // {
-                CRYPTO_BLAKE2B = lib.kernel.yes;
-                CRYPTO_CRC32C = lib.kernel.yes;
-                CRYPTO_SHA256 = lib.kernel.yes;
-                CRYPTO_XXHASH = lib.kernel.yes;
-              };
-            });
-          });
+          default = pkgs.linuxPackages;
           description = "Kernel package set used to select the kernel and matching external modules.";
         };
         package = lib.mkOption {
