@@ -8,7 +8,7 @@ let
   cfg = config.runix.systemServices;
   dbusConfig = pkgs.makeDBusConf.override {
     dbus = pkgs.dbus;
-    suidHelper = "${pkgs.dbus}/libexec/dbus-daemon-launch-helper";
+    suidHelper = "/run/wrappers/bin/dbus-daemon-launch-helper";
     serviceDirectories = [ pkgs.dbus ] ++ cfg.dbusPackages;
   };
 in
@@ -34,12 +34,15 @@ in
     runix.packages = [ pkgs.dbus ] ++ cfg.dbusPackages;
     runix.preparationScripts = [
       ''
-        mkdir -p /etc/dbus-1/system.d /run/dbus /usr/share/dbus-1/system-services /var/lib/dbus
+        mkdir -p /etc/dbus-1/system.d /run/dbus /run/wrappers/bin /usr/share/dbus-1/system-services /var/lib/dbus
         if [ ! -s /var/lib/dbus/machine-id ]; then
           ${pkgs.dbus}/bin/dbus-uuidgen > /var/lib/dbus/machine-id
         fi
         ln -sfn /var/lib/dbus/machine-id /etc/machine-id
         ln -sfn ${dbusConfig}/system.conf /etc/dbus-1/system.conf
+        ${pkgs.coreutils}/bin/install -m4750 -o root -g messagebus \
+          ${pkgs.dbus}/libexec/dbus-daemon-launch-helper \
+          /run/wrappers/bin/dbus-daemon-launch-helper
         for package in ${lib.escapeShellArgs cfg.dbusPackages}; do
           for policy in "$package"/share/dbus-1/system.d/*; do
             [ -e "$policy" ] || continue
