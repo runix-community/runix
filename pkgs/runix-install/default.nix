@@ -148,8 +148,9 @@ writeShellApplication {
       echo "runix-install: preparing users, configuration, and service state offline"
       ${util-linux}/bin/unshare --mount --propagation private \
         ${bash}/bin/bash ${./activate-target.sh} "$root" "$system"
-      [ -f "$root/etc/passwd" ] && { [ -e "$root/etc/nix/nix.conf" ] || [ -L "$root/etc/nix/nix.conf" ]; } ||
+      if [ ! -f "$root/etc/passwd" ] || { [ ! -e "$root/etc/nix/nix.conf" ] && [ ! -L "$root/etc/nix/nix.conf" ]; }; then
         die "target configuration is incomplete"
+      fi
     fi
 
     echo "runix-install: registering the system generation"
