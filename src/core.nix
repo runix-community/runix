@@ -253,6 +253,7 @@ in
 
     runix = {
       kernel.modules = lib.mkBefore [
+        "i8042"
         "atkbd"
         "loop"
       ];
