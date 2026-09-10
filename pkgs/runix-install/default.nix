@@ -120,30 +120,28 @@ writeShellApplication {
     ${util-linux}/bin/flock -n 9 || die "another installation is already using this target"
     configuration="$flake#runixConfigurations.$host.config.runix.build"
     store="local?root=$root"
-    work=$(mktemp -d)
-    trap 'rm -rf "$work"' EXIT
     trap 'exit 130' INT
     trap 'exit 143' TERM
 
-    echo "runix-install: building configuration $host"
-    system=$(${lib.getExe nix} --extra-experimental-features "nix-command flakes" build --out-link "$work/system" --print-out-paths "$configuration.system" "''${nix_args[@]}")
-    [ -d "$system" ] || die "system build did not produce a directory"
-    ${bash}/bin/bash ${./preflight.sh} "$root" "$system/install-spec.json" "$install_bootloader" "$activate"
+    echo "runix-install: building configuration $host in the target store"
+    system=$(${lib.getExe nix} --store "$store" --extra-experimental-features "nix-command flakes" \
+      --option build-users-group "" build --no-link --print-out-paths "$configuration.system" "''${nix_args[@]}")
+    target_system="$root$system"
+    [ -d "$target_system" ] || die "system build did not produce a directory in the target store"
+    ${bash}/bin/bash ${./preflight.sh} "$root" "$target_system/install-spec.json" "$install_bootloader" "$activate"
     if [ "$install_bootloader" -eq 1 ]; then
       echo "runix-install: building the configured bootloader installer"
-      installer=$(${lib.getExe nix} --extra-experimental-features "nix-command flakes" build --out-link "$work/bootloader" --print-out-paths "$configuration.installBootLoader" "''${nix_args[@]}")
+      installer=$(${lib.getExe nix} --store "$store" --extra-experimental-features "nix-command flakes" \
+        --option build-users-group "" build --no-link --print-out-paths "$configuration.installBootLoader" "''${nix_args[@]}")
     fi
 
     if [ ! -s "$root/etc/fstab" ]; then
       echo "runix-install: generating /etc/fstab"
       mkdir -p "$root/etc"
-      ${bash}/bin/bash ${./fstab.sh} "$root" > "$work/fstab"
-      install -m0644 "$work/fstab" "$root/etc/fstab"
+      ${bash}/bin/bash ${./fstab.sh} "$root" > "$root/etc/fstab.tmp"
+      install -m0644 "$root/etc/fstab.tmp" "$root/etc/fstab"
+      rm -f "$root/etc/fstab.tmp"
     fi
-
-    mkdir -p "$root/nix"
-    echo "runix-install: installing the configured system closure"
-    ${lib.getExe nix} --extra-experimental-features nix-command copy --no-check-sigs --to "$store" "$system"
 
     if [ "$activate" -eq 1 ]; then
       echo "runix-install: preparing users, configuration, and service state offline"
@@ -161,9 +159,10 @@ writeShellApplication {
 
     if [ "$install_bootloader" -eq 1 ]; then
       echo "runix-install: installing the bootloader"
-      boot=$(jq -r .bootLoader.mountPoint "$system/install-spec.json")
+      boot=$(jq -r .bootLoader.mountPoint "$target_system/install-spec.json")
       mkdir -p "$root$boot"
-      "$installer" "$root"
+      ${util-linux}/bin/unshare --mount --propagation private \
+        ${bash}/bin/bash ${./bootloader-target.sh} "$root" "$installer"
     fi
 
     sync -f "$root"
