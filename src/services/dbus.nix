@@ -47,7 +47,7 @@ in
       ''
     ];
     runix.services.dbus = {
-      command = "${pkgs.dbus}/bin/dbus-daemon --system --nofork --nopidfile";
+      command = "${pkgs.dbus}/bin/dbus-daemon --config-file=${pkgs.dbus}/share/dbus-1/system.conf --nofork --nopidfile";
       check = ''
         ${pkgs.dbus}/bin/dbus-send --system --type=method_call --print-reply \
           --dest=org.freedesktop.DBus / org.freedesktop.DBus.ListNames >/dev/null
