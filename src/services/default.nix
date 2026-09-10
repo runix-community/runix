@@ -2,6 +2,7 @@
   imports = [
     ./containers.nix
     ./dbus.nix
+    ./dhcpcd.nix
     ./device-manager.nix
     ./elogind.nix
     ./libvirt.nix
