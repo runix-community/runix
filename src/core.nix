@@ -138,6 +138,12 @@ let
       }) packages
     )
   );
+  pamLogin = pkgs.writeText "runix-pam-login" ''
+    auth required ${pkgs.linux-pam}/lib/security/pam_unix.so
+    account required ${pkgs.linux-pam}/lib/security/pam_unix.so
+    password required ${pkgs.linux-pam}/lib/security/pam_unix.so
+    session required ${pkgs.linux-pam}/lib/security/pam_unix.so
+  '';
 in
 {
   options = {
@@ -265,6 +271,12 @@ in
         pkgs.kmod
         pkgs.util-linux
         config.runix.runit.package
+      ];
+      preparationScripts = lib.mkBefore [
+        ''
+          mkdir -p /etc/pam.d
+          ln -sfn ${pamLogin} /etc/pam.d/login
+        ''
       ];
       build = {
         inherit
