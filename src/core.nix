@@ -155,8 +155,8 @@ let
       return 127;
     }
   '';
-  unixChkpwdWrapper = pkgs.runCommandCC "runix-unix-chkpwd-wrapper" { } ''
-    $CC -O2 -Wall -Wextra -Werror ${unixChkpwdWrapperSource} -o "$out"
+  unixChkpwdWrapper = pkgs.runCommand "runix-unix-chkpwd-wrapper" { nativeBuildInputs = [ pkgs.clang ]; } ''
+    clang -O2 -Wall -Wextra -Werror ${unixChkpwdWrapperSource} -o "$out"
   '';
 in
 {

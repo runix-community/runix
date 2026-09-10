@@ -80,8 +80,8 @@
               return 1;
             }
           '';
-          consoleShell = pkgs.runCommandCC "runix-console" { } ''
-            $CC -O2 -Wall -Wextra -Werror -o "$out" ${consoleSource}
+          consoleShell = pkgs.runCommand "runix-console" { nativeBuildInputs = [ pkgs.clang ]; } ''
+            clang -O2 -Wall -Wextra -Werror -o "$out" ${consoleSource}
           '';
           vm = self.lib.runixSystem {
             inherit system;
