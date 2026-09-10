@@ -6,12 +6,7 @@
 }:
 let
   cfg = config.runix.systemServices.networkManager;
-  networkManager = (pkgs.networkmanager.override {
-    udev = pkgs.libudev-zero;
-    withSystemd = false;
-  }).overrideAttrs (old: {
-    mesonFlags = old.mesonFlags ++ [ "-Dsystemdsystemgeneratordir=no" ];
-  });
+  networkManager = pkgs.callPackage ../../pkgs/networkmanager { };
   networkManagerConfig = pkgs.writeText "runix-NetworkManager.conf" ''
     [main]
     plugins=keyfile
