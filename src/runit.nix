@@ -267,6 +267,7 @@ let
       if config.fileSystems == { } then "1" else "0"
     }
     if [ "$RUNIX_OFFLINE" = 0 ]; then
+      printf '%s\n' ${lib.escapeShellArg "${pkgs.kmod}/bin/modprobe"} > /proc/sys/kernel/modprobe
       ${pkgs.util-linux}/bin/mount -a
     fi
     chmod 0000 /etc/runit/stopit /etc/runit/reboot
