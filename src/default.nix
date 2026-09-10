@@ -2,6 +2,7 @@
   imports = [
     ./core.nix
     ./filesystems.nix
+    ./filesystems/btrfs.nix
     ./runit.nix
     ./initrd.nix
     ./bootloader.nix

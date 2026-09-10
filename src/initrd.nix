@@ -12,17 +12,14 @@ let
       fsType = "";
       options = [ ];
     };
-  rootFileSystemModule = lib.optional (
-    root.fsType != "" && root.fsType != "auto" && root.fsType != "zfs"
-  ) root.fsType;
-  btrfsChecksumModules = lib.optionals (
-    builtins.any (fileSystem: fileSystem.fsType == "btrfs") cfg.build.earlyFileSystems
-  ) [
-    "crc32c"
-    "xxhash64"
-    "sha256"
-    "blake2b-256"
-  ];
+  earlyFileSystemModules = lib.unique (
+    lib.concatMap (
+      fileSystem:
+      lib.optional (
+        fileSystem.fsType != "" && fileSystem.fsType != "auto" && fileSystem.fsType != "zfs"
+      ) fileSystem.fsType
+    ) cfg.build.earlyFileSystems
+  );
   kernel = cfg.kernel.package;
   modulesTree = pkgs.aggregateModules ([ (kernel.modules or kernel) ] ++ cfg.kernel.modulePackages);
   emptyFirmware = pkgs.runCommand "runix-empty-firmware" { } ''
@@ -274,11 +271,13 @@ in
     modules = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [ ];
+      apply = lib.unique;
       description = "Kernel modules copied into the initial ramdisk.";
     };
     loadModules = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [ ];
+      apply = lib.unique;
       description = "Kernel modules loaded before mounting root.";
     };
     rootTimeout = lib.mkOption {
@@ -304,10 +303,9 @@ in
           "virtio_blk"
           "virtio_pci"
         ]
-        ++ rootFileSystemModule
-        ++ btrfsChecksumModules
+        ++ earlyFileSystemModules
       );
-      loadModules = lib.mkBefore rootFileSystemModule;
+      loadModules = lib.mkBefore earlyFileSystemModules;
     };
     build = {
       inherit initrd modulesTree firmware;
