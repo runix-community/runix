@@ -270,6 +270,9 @@ let
     ln -sfn "$system" /run/current-system
     if [ "$RUNIX_OFFLINE" = 0 ]; then
       printf '%s\n' ${lib.escapeShellArg "${pkgs.kmod}/bin/modprobe"} > /proc/sys/kernel/modprobe
+      if [ -w /sys/module/firmware_class/parameters/path ]; then
+        printf '%s' ${cfg.build.firmware}/lib/firmware > /sys/module/firmware_class/parameters/path
+      fi
       ${lib.concatMapStringsSep "\n" (
         module: "${pkgs.kmod}/bin/modprobe ${lib.escapeShellArg module}"
       ) cfg.kernel.modules}

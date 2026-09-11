@@ -94,11 +94,6 @@ in
       pkgs.libudev-zero
     ];
     runix.preparationScripts = [ "ln -sfn ${rules} /etc/mdev.conf" ];
-    runix.activationScripts = lib.optional cfg.enable ''
-      if [ -w /sys/module/firmware_class/parameters/path ]; then
-        printf '%s' ${config.runix.build.firmware}/lib/firmware > /sys/module/firmware_class/parameters/path
-      fi
-    '';
     runix.services = lib.mkIf cfg.enable {
       mdevd = {
         script = ''

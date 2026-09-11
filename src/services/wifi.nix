@@ -9,6 +9,13 @@ let
   stateDirectory = "/var/lib/runix/wifi";
   controlDirectory = "/run/wpa_supplicant";
   configFile = "${stateDirectory}/wpa_supplicant.conf";
+  prepareState = ''
+    mkdir -p ${controlDirectory} ${stateDirectory}
+    if [ ! -e ${configFile} ]; then
+      printf 'ctrl_interface=${controlDirectory}\nupdate_config=1\n' > ${configFile}
+    fi
+    chmod 0600 ${configFile}
+  '';
   interfaceScript = ''
     interface=${lib.escapeShellArg cfg.interface}
     if [ -z "$interface" ]; then
@@ -122,18 +129,11 @@ in
       cli
       pkgs.wpa_supplicant
     ];
-    runix.preparationScripts = [
-      ''
-        mkdir -p ${controlDirectory} ${stateDirectory}
-        if [ ! -e ${configFile} ]; then
-          printf 'ctrl_interface=${controlDirectory}\nupdate_config=1\n' > ${configFile}
-        fi
-        chmod 0600 ${configFile}
-      ''
-    ];
+    runix.preparationScripts = [ prepareState ];
     runix.services = {
       wpa-supplicant = {
         script = ''
+          ${prepareState}
           ${interfaceScript}
           exec ${pkgs.wpa_supplicant}/bin/wpa_supplicant \
             -i "$interface" -c ${configFile}
