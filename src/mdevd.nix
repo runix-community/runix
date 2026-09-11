@@ -41,7 +41,7 @@ let
     ln -s ${pkgs.util-linux}/bin/blkid "$out/bin/runix-blkid"
   '';
   rules = pkgs.writeText "runix-mdev.conf" ''
-    -$MODALIAS=.* 0:0 660 @modprobe -q --first-time "$MODALIAS" 2>/dev/null || true
+    -$MODALIAS=.* 0:0 660 @/bin/modprobe -q "$MODALIAS"
     -SUBSYSTEM=block;.* 0:${gid "disk"} 660 *${diskScript}
     null 0:0 666
     zero 0:0 666

@@ -26,7 +26,6 @@
           runit = pkgs.callPackage ./pkgs/runit { };
           runix = pkgs.callPackage ./pkgs/runix { };
           runix-install = pkgs.callPackage ./pkgs/runix-install { };
-          networkmanager = pkgs.callPackage ./pkgs/networkmanager { };
           bspwm = pkgs.bspwm;
           inherit (desktopPackages) hyprland labwc niri;
           qtile = pkgs.python3Packages.qtile;
@@ -102,7 +101,6 @@
             hyprland
             labwc
             niri
-            networkmanager
             qtile
             runit
             runix

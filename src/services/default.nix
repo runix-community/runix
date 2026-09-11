@@ -8,6 +8,7 @@
     ./libvirt.nix
     ./network-manager.nix
     ./openssh.nix
+    ./wifi.nix
     ./polkit.nix
     ./power.nix
     ./sudo.nix
