@@ -29,9 +29,11 @@ let
     if cfg.kernel.firmwarePackages == [ ] then
       emptyFirmware
     else
-      pkgs.symlinkJoin {
+      pkgs.buildEnv {
         name = "runix-firmware";
         paths = cfg.kernel.firmwarePackages;
+        pathsToLink = [ "/lib/firmware" ];
+        ignoreCollisions = true;
       };
 
   modulesClosure = pkgs.makeModulesClosure {

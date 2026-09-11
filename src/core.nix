@@ -155,9 +155,11 @@ let
       return 127;
     }
   '';
-  unixChkpwdWrapper = pkgs.runCommand "runix-unix-chkpwd-wrapper" { nativeBuildInputs = [ pkgs.clang ]; } ''
-    clang -O2 -Wall -Wextra -Werror ${unixChkpwdWrapperSource} -o "$out"
-  '';
+  unixChkpwdWrapper =
+    pkgs.runCommand "runix-unix-chkpwd-wrapper" { nativeBuildInputs = [ pkgs.clang ]; }
+      ''
+        clang -O2 -Wall -Wextra -Werror ${unixChkpwdWrapperSource} -o "$out"
+      '';
 in
 {
   options = {
@@ -272,6 +274,7 @@ in
     );
 
     runix = {
+      kernel.parameters = lib.mkBefore [ "loglevel=4" ];
       kernel.modules = lib.mkBefore [
         "i8042"
         "atkbd"
