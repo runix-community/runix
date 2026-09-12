@@ -13,7 +13,7 @@ let
     account required ${pkgs.linux-pam}/lib/security/pam_unix.so
     password required ${pkgs.linux-pam}/lib/security/pam_unix.so
     session required ${pkgs.linux-pam}/lib/security/pam_unix.so
-    session required ${pkgs.elogind}/lib/security/pam_elogind.so
+    session optional ${pkgs.elogind}/lib/security/pam_elogind.so
   '';
   dbusPolicy = pkgs.runCommand "runix-elogind-dbus-policy" { } ''
     mkdir -p $out/share/dbus-1/system.d

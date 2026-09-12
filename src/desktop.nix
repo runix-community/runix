@@ -62,7 +62,7 @@ let
     account required ${pam}/lib/security/pam_unix.so
     password required ${pam}/lib/security/pam_unix.so
     session required ${pam}/lib/security/pam_unix.so
-    session required ${pkgs.elogind}/lib/security/pam_elogind.so
+    session optional ${pkgs.elogind}/lib/security/pam_elogind.so
   '';
 
   pamGreeter = pkgs.writeText "runix-pam-sddm-greeter" ''
