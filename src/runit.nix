@@ -322,6 +322,7 @@ let
       ''
     ) cfg.build.normalizedUsers}
     ln -sfn ${pkgs.bashInteractive}/bin/bash /bin/sh
+    ln -sfn ${pkgs.util-linux}/bin/login /bin/login
     ln -sfn ${pkgs.coreutils}/bin/env /usr/bin/env
 
     ${lib.concatMapAttrsStringSep "\n" (_: user: ''
