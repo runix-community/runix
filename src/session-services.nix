@@ -43,7 +43,11 @@ let
 
     export PIPEWIRE_RUNTIME_DIR="$XDG_RUNTIME_DIR"
     services="$(${pkgs.coreutils}/bin/mktemp -d "$XDG_RUNTIME_DIR/runix-audio.XXXXXX")"
-    ${pkgs.coreutils}/bin/cp -RP ${pipewireServiceTree}/. "$services"/
+    for definition in ${pipewireServiceTree}/*; do
+      service="$services/''${definition##*/}"
+      ${pkgs.coreutils}/bin/mkdir -p "$service"
+      ${pkgs.coreutils}/bin/cp -RP "$definition"/. "$service"/
+    done
 
     ${runit}/bin/runsvdir "$services" &
     supervisor=$!
