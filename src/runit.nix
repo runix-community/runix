@@ -228,9 +228,7 @@ let
   verifyServices = pkgs.writeShellScript "runix-verify-services" ''
     set -eu
     ${lib.concatMapStringsSep "\n" (name: ''
-      if ! output="$(${cfg.runit.package}/bin/sv -w ${toString cfg.runit.serviceTimeout} check ${
-        lib.escapeShellArg "/run/runit/service/${name}"
-      } 2>&1)"; then
+      if ! output="$(${cfg.runit.package}/bin/sv -w ${toString cfg.runit.serviceTimeout} check ${lib.escapeShellArg "/run/runit/service/${name}"} 2>&1)"; then
         echo "runix: service ${name} failed its readiness check" >&2
         printf '%s\n' "$output" >&2
         exit 1
@@ -354,6 +352,7 @@ let
     source=${serviceTree}
     target=/run/runit/service
     supervision_active=0
+    declare -a service_changes=()
     if [ -d "$target" ]; then
       for current in "$target"/*; do
         if [ -e "$current/supervise/ok" ]; then
@@ -380,6 +379,7 @@ let
       if [ ! -d "$source/$name" ]; then
         stop_service "$current"
         rm -rf "$current"
+        service_changes+=("removed:$name")
       fi
     done
     for definition in "$source"/*; do
@@ -389,15 +389,19 @@ let
       if [ -f "$current/revision" ] && ${pkgs.diffutils}/bin/cmp -s "$definition/revision" "$current/revision"; then
         continue
       fi
+      change=started
+      [ ! -e "$current" ] || change=restarted
       # Never tear down the active login session. The new console definition is
       # installed on the next boot, before runsvdir starts supervising services.
       if [ "$name" = console ] && [ -d "$current/supervise" ]; then
+        service_changes+=("deferred:$name")
         continue
       fi
       stop_service "$current"
       rm -rf "$current"
       mkdir -p "$current"
       cp -RP "$definition"/. "$current"/
+      service_changes+=("$change:$name")
     done
     touch "$target"
     if [ "$RUNIX_BOOT" = 0 ] && [ "$supervision_active" = 1 ]; then
@@ -414,6 +418,33 @@ let
           }
           ${pkgs.coreutils}/bin/sleep 0.1
         done
+      done
+    fi
+
+    if [ "$RUNIX_BOOT" = 0 ]; then
+      if [ "''${#service_changes[@]}" -eq 0 ]; then
+        echo "runix-switch: services unchanged"
+      fi
+      for entry in "''${service_changes[@]}"; do
+        change="''${entry%%:*}"
+        name="''${entry#*:}"
+        case "$change" in
+          removed)
+            printf 'runix-switch: service %-24s removed\n' "$name"
+            ;;
+          deferred)
+            printf 'runix-switch: service %-24s deferred until reboot (active session)\n' "$name"
+            ;;
+          started|restarted)
+            if output="$(${cfg.runit.package}/bin/sv -w ${toString cfg.runit.serviceTimeout} check "$target/$name" 2>&1)"; then
+              printf 'runix-switch: service %-24s %s successfully\n' "$name" "$change"
+            else
+              printf 'runix-switch: service %-24s FAILED after %s\n' "$name" "$change" >&2
+              printf '%s\n' "$output" >&2
+              exit 1
+            fi
+            ;;
+        esac
       done
     fi
 
@@ -460,6 +491,8 @@ let
         }
       )
     } "$out/install-spec.json"
+    printf '%s\n' ${lib.escapeShellArg cfg.hostName} > "$out/host-name"
+    printf '%s\n' ${lib.escapeShellArg (lib.getVersion cfg.kernel.package)} > "$out/kernel-version"
     printf '%s\n' ${lib.escapeShellArg (lib.concatStringsSep " " cfg.kernel.parameters)} > "$out/kernel-params"
     printf '%s\n' ${
       lib.escapeShellArg (

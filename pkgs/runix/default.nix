@@ -7,7 +7,7 @@
   writeShellApplication,
 }:
 writeShellApplication {
-  name = "runix";
+  name = "runix-switch";
   runtimeInputs = [
     coreutils
     inetutils
@@ -16,12 +16,12 @@ writeShellApplication {
   text = ''
     usage() {
       cat <<'EOF'
-    Usage: runix ACTION [OPTIONS] [-- NIX_OPTIONS...]
+    Usage: runix-switch ACTION [OPTIONS] [-- NIX_OPTIONS...]
 
     Actions:
       build                 Build the system and create ./result
       dry-build             Show what building the system would do
-      switch                Build, register, activate, and update the bootloader
+      rebuild               Build, register, activate, and update the bootloader
       boot                  Build, register, and update the bootloader
       test                  Build and activate without creating a generation
       rollback [switch|boot]
@@ -43,7 +43,7 @@ writeShellApplication {
     }
 
     die() {
-      echo "runix: $*" >&2
+      echo "runix-switch: $*" >&2
       exit 2
     }
 
@@ -66,7 +66,7 @@ writeShellApplication {
         usage
         exit 0
         ;;
-      build|dry-build|switch|boot|test|rollback|bootloader|list-generations|delete-generations) ;;
+      build|dry-build|rebuild|boot|test|rollback|bootloader|list-generations|delete-generations) ;;
       *) die "unknown action: $action" ;;
     esac
 
@@ -136,10 +136,15 @@ writeShellApplication {
         [ "''${#action_args[@]}" -eq 0 ] || die "dry-build takes no positional arguments"
         nix build --dry-run "$configuration.system" "''${nix_args[@]}"
         ;;
-      switch|boot|test)
+      rebuild|boot|test)
         [ "''${#action_args[@]}" -eq 0 ] || die "$action takes no positional arguments"
         switch_script="$(build_path switchToConfiguration)"
-        as_root "$switch_script" "$action"
+        if [ "$action" = rebuild ]; then
+          printf 'runix-switch: rebuilding %s\n' "$host"
+          as_root "$switch_script" switch
+        else
+          as_root "$switch_script" "$action"
+        fi
         ;;
       rollback)
         [ "''${#action_args[@]}" -le 1 ] || die "rollback accepts only switch or boot"
@@ -181,7 +186,7 @@ writeShellApplication {
   meta = {
     description = "Build, activate, and manage Runix systems";
     license = lib.licenses.bsd3;
-    mainProgram = "runix";
+    mainProgram = "runix-switch";
     platforms = lib.platforms.linux;
   };
 }

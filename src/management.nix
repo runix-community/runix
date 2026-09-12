@@ -31,9 +31,9 @@
         experimental-features = nix-command flakes
         build-users-group = nixbld
         trusted-users = root
-      allowed-users = *
-      sandbox = true
-      nix-path = nixpkgs=${pkgs.path}
+        allowed-users = *
+        sandbox = true
+        nix-path = nixpkgs=${pkgs.path}
       ''} /etc/nix/nix.conf
     ''
   ];

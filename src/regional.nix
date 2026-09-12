@@ -48,10 +48,17 @@ in
       };
     };
 
-    console.keyMap = lib.mkOption {
-      type = lib.types.str;
-      default = "us";
-      description = "Linux virtual console keymap.";
+    console = {
+      keyMap = lib.mkOption {
+        type = lib.types.str;
+        default = "us";
+        description = "Linux virtual console keymap.";
+      };
+      bell.enable = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = "Whether the audible bell is enabled on Linux virtual consoles.";
+      };
     };
 
     fonts = {
@@ -127,6 +134,12 @@ in
     ];
     runix.activationScripts = lib.optional (!config.runix.virtualMachine.enable) ''
       ${pkgs.kbd}/bin/loadkeys ${lib.escapeShellArg config.console.keyMap} || true
+      ${lib.optionalString (!config.console.bell.enable) ''
+        for tty in /dev/tty[1-9]*; do
+          [ -c "$tty" ] || continue
+          ${pkgs.util-linux}/bin/setterm --term linux --blength 0 > "$tty" || true
+        done
+      ''}
     '';
   };
 }

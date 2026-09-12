@@ -86,6 +86,21 @@ let
     install_generation() {
       generation_params=${lib.escapeShellArg kernelParams}
       generation_root="$root_params"
+      generation_host=${lib.escapeShellArg cfg.hostName}
+      generation_kernel=${lib.escapeShellArg (lib.getVersion cfg.kernel.package)}
+      generation_label="generation $generation"
+      generation_created=""
+      if [ -s "$system/host-name" ]; then generation_host="$(< "$system/host-name")"; fi
+      if [ -s "$system/kernel-version" ]; then generation_kernel="$(< "$system/kernel-version")"; fi
+      if [ "$generation" = current ]; then
+        generation_label="current build"
+      else
+        generation_created="$(${pkgs.coreutils}/bin/stat -c '%y' "$link")"
+        generation_created="''${generation_created:0:16}"
+      fi
+      if [ "$first" -eq 1 ]; then generation_label="$generation_label (current)"; fi
+      generation_title="Runix $generation_host - $generation_label - Linux $generation_kernel"
+      if [ -n "$generation_created" ]; then generation_title="$generation_title - $generation_created"; fi
       if [ -f "$system/kernel-params" ]; then generation_params="$(< "$system/kernel-params")"; fi
       if [ -s "$system/root-params" ]; then
         configured="$(< "$system/root-params")"
@@ -122,13 +137,8 @@ let
       fi
       name="''${system##*/}"
       install_generation
-      if [ "$first" -eq 1 ]; then
-        title='Latest generation'
-      else
-        title="Generation $generation"
-      fi
       ${pkgs.coreutils}/bin/printf '%s\n' \
-        "menuentry '$title' {" \
+        "menuentry '$generation_title' {" \
         "  linux $boot_path/$name-kernel init=$system/init $generation_params $generation_root" \
         "  initrd $boot_path/$name-initrd" \
         '}' >>"$config_file"
@@ -193,13 +203,13 @@ let
       name="''${system##*/}"
       install_generation
       if [ "$first" -eq 1 ]; then
-        title=/Latest\ generation
+        title="/$generation_title"
       else
         if [ "$first" -eq 0 ]; then
           ${pkgs.coreutils}/bin/printf '%s\n' '/+Other generations' >>"$config_file"
           first=2
         fi
-        title="//Generation $generation"
+        title="//$generation_title"
       fi
       ${pkgs.coreutils}/bin/printf '%s\n' \
         "$title" \
