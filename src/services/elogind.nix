@@ -48,7 +48,6 @@ in
       command = "${pkgs.elogind}/libexec/elogind";
       environment = {
         DBUS_SYSTEM_BUS_ADDRESS = "unix:path=/run/dbus/system_bus_socket";
-        SYSTEMD_LOG_TARGET = "null";
       };
       after = [
         "dbus"

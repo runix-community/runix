@@ -34,11 +34,10 @@ in
     runix.packages = [ pkgs.dbus ] ++ cfg.dbusPackages;
     runix.preparationScripts = [
       ''
-        mkdir -p /etc/dbus-1/system.d /run/dbus /run/wrappers/bin /usr/share/dbus-1/system-services /var/lib/dbus /var/run
-        if [ -e /var/run/dbus ] && [ ! -L /var/run/dbus ]; then
-          rm -rf /var/run/dbus
+        if [ -L /run/dbus ]; then
+          rm -f /run/dbus
         fi
-        ln -sfn /run/dbus /var/run/dbus
+        mkdir -p /etc/dbus-1/system.d /run/dbus /run/wrappers/bin /usr/share/dbus-1/system-services /var/lib/dbus
         if [ ! -s /var/lib/dbus/machine-id ]; then
           ${pkgs.dbus}/bin/dbus-uuidgen > /var/lib/dbus/machine-id
         fi
