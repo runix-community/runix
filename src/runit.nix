@@ -96,7 +96,15 @@ let
     name: value: "export ${name}=${lib.escapeShellArg value}"
   ) cfg.environmentVariables;
   serviceEnvironment = service: cfg.environmentVariables // service.environment;
-  servicePath = service: lib.makeBinPath (cfg.packages ++ service.path);
+  servicePath =
+    service:
+    lib.concatStringsSep ":" (
+      [
+        "/run/current-system/sw/bin"
+        "/run/current-system/sw/sbin"
+      ]
+      ++ lib.optional (service.path != [ ]) (lib.makeBinPath service.path)
+    );
   serviceIdentity =
     service: service.user + lib.optionalString (service.group != null) ":${service.group}";
 
@@ -331,12 +339,22 @@ let
     source=${serviceTree}
     target=/run/runit/service
     mkdir -p "$target"
+    stop_service() {
+      service="$1"
+      if [ -d "$service/supervise" ]; then
+        ${cfg.runit.package}/bin/sv -w ${toString cfg.runit.serviceTimeout} force-stop "$service" || true
+        ${cfg.runit.package}/bin/sv exit "$service" || true
+      fi
+      if [ -d "$service/log/supervise" ]; then
+        ${cfg.runit.package}/bin/sv -w ${toString cfg.runit.serviceTimeout} force-stop "$service/log" || true
+        ${cfg.runit.package}/bin/sv exit "$service/log" || true
+      fi
+    }
     for current in "$target"/*; do
       [ -e "$current" ] || continue
       name="''${current##*/}"
       if [ ! -d "$source/$name" ]; then
-        ${cfg.runit.package}/bin/sv -w ${toString cfg.runit.serviceTimeout} force-stop "$current" || true
-        ${cfg.runit.package}/bin/sv exit "$current" || true
+        stop_service "$current"
         rm -rf "$current"
       fi
     done
@@ -347,15 +365,31 @@ let
       if [ -f "$current/revision" ] && ${pkgs.diffutils}/bin/cmp -s "$definition/revision" "$current/revision"; then
         continue
       fi
-      if [ -d "$current/supervise" ]; then
-        ${cfg.runit.package}/bin/sv -w ${toString cfg.runit.serviceTimeout} force-stop "$current" || true
-        ${cfg.runit.package}/bin/sv exit "$current" || true
+      # Never tear down the active login session. The new console definition is
+      # installed on the next boot, before runsvdir starts supervising services.
+      if [ "$name" = console ] && [ -d "$current/supervise" ]; then
+        continue
       fi
+      stop_service "$current"
       rm -rf "$current"
       mkdir -p "$current"
       cp -RP "$definition"/. "$current"/
     done
     touch "$target"
+    for definition in "$source"/*; do
+      [ -d "$definition" ] || continue
+      name="''${definition##*/}"
+      current="$target/$name"
+      tries=0
+      while [ ! -e "$current/supervise/ok" ]; do
+        tries=$((tries + 1))
+        [ "$tries" -lt ${toString (cfg.runit.serviceTimeout * 10)} ] || {
+          echo "runix: runsvdir did not supervise $name" >&2
+          exit 1
+        }
+        ${pkgs.coreutils}/bin/sleep 0.1
+      done
+    done
 
   '';
 
