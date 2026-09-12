@@ -63,7 +63,12 @@ let
   '';
   audioCommand = pkgs.writeShellApplication {
     name = "runix-audio";
-    text = "exec ${pipewireSession}";
+    text = ''
+      if [ -z "''${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
+        exec ${pkgs.dbus}/bin/dbus-run-session -- ${pipewireSession}
+      fi
+      exec ${pipewireSession}
+    '';
   };
 in
 {

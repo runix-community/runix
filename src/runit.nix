@@ -423,23 +423,23 @@ let
 
     if [ "$RUNIX_BOOT" = 0 ]; then
       if [ "''${#service_changes[@]}" -eq 0 ]; then
-        echo "runix-switch: services unchanged"
+        echo "runix-rebuild: services unchanged"
       fi
       for entry in "''${service_changes[@]}"; do
         change="''${entry%%:*}"
         name="''${entry#*:}"
         case "$change" in
           removed)
-            printf 'runix-switch: service %-24s removed\n' "$name"
+            printf 'runix-rebuild: service %-24s removed\n' "$name"
             ;;
           deferred)
-            printf 'runix-switch: service %-24s deferred until reboot (active session)\n' "$name"
+            printf 'runix-rebuild: service %-24s deferred until reboot (active session)\n' "$name"
             ;;
           started|restarted)
             if output="$(${cfg.runit.package}/bin/sv -w ${toString cfg.runit.serviceTimeout} check "$target/$name" 2>&1)"; then
-              printf 'runix-switch: service %-24s %s successfully\n' "$name" "$change"
+              printf 'runix-rebuild: service %-24s %s successfully\n' "$name" "$change"
             else
-              printf 'runix-switch: service %-24s FAILED after %s\n' "$name" "$change" >&2
+              printf 'runix-rebuild: service %-24s FAILED after %s\n' "$name" "$change" >&2
               printf '%s\n' "$output" >&2
               exit 1
             fi

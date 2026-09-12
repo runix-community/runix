@@ -73,23 +73,23 @@ let
       ${pkgs.coreutils}/bin/mkdir -p "''${profile%/*}"
       ${pkgs.nix}/bin/nix-env --option build-users-group "" --profile "$profile" --set ${cfg.build.system}
       generation="$(current_generation)"
-      echo "runix-switch: registered generation $generation"
+      echo "runix-rebuild: registered generation $generation"
     fi
     if [ "$action" != boot ]; then
       runtime_changed=1
       if [ "$action" = test ]; then
-        echo "runix-switch: activating test configuration"
+        echo "runix-rebuild: activating test configuration"
       else
-        echo "runix-switch: activating generation $generation"
+        echo "runix-rebuild: activating generation $generation"
       fi
       ${cfg.build.system}/activate
       ${cfg.build.system}/verify-services
-      echo "runix-switch: activation successful"
+      echo "runix-rebuild: activation successful"
     fi
     if [ "$action" != test ]; then
       boot_changed=1
       ${lib.optionalString hasBootLoader "run_quietly ${cfg.build.installBootLoader} /"}
-      ${lib.optionalString hasBootLoader ''echo "runix-switch: bootloader updated for generation $generation"''}
+      ${lib.optionalString hasBootLoader ''echo "runix-rebuild: bootloader updated for generation $generation"''}
     fi
     trap - ERR INT TERM
   '';
