@@ -18,5 +18,8 @@ in
     };
   };
 
-  config.runix.packages = lib.optional cfg.enable cfg.package;
+  config = lib.mkIf cfg.enable {
+    runix.wayland.enable = true;
+    runix.packages = [ cfg.package ];
+  };
 }

@@ -8,5 +8,6 @@
     ./niri.nix
     ./qtile.nix
     ./sxhkd.nix
+    ./wayland.nix
   ];
 }

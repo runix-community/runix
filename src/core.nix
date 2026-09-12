@@ -289,9 +289,14 @@ in
         pkgs.coreutils
         pkgs.iproute2
         pkgs.kmod
+        pkgs.nano
         pkgs.util-linux
         config.runix.runit.package
       ];
+      environmentVariables = {
+        EDITOR = "nano";
+        VISUAL = "nano";
+      };
       preparationScripts = lib.mkBefore [
         ''
           mkdir -p /etc/pam.d /run/wrappers/bin

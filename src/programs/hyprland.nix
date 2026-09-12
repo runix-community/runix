@@ -30,7 +30,8 @@ in
     };
   };
 
-  config.runix.packages =
-    lib.optional cfg.enable cfg.package
-    ++ lib.optional (cfg.enable && cfg.xwayland.enable) cfg.xwayland.package;
+  config = lib.mkIf cfg.enable {
+    runix.wayland.enable = true;
+    runix.packages = [ cfg.package ] ++ lib.optional cfg.xwayland.enable cfg.xwayland.package;
+  };
 }

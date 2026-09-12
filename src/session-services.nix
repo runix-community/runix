@@ -61,6 +61,10 @@ let
     trap cleanup EXIT INT TERM
     wait "$supervisor"
   '';
+  audioCommand = pkgs.writeShellApplication {
+    name = "runix-audio";
+    text = "exec ${pipewireSession}";
+  };
 in
 {
   options.services = {
@@ -111,6 +115,7 @@ in
         shell = "/bin/false";
       };
       runix.packages = [
+        audioCommand
         pipewire.package
         pkgs.rtkit
       ]

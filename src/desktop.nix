@@ -155,6 +155,7 @@ in
       dbus.enable = lib.mkDefault true;
       elogind.enable = lib.mkDefault true;
       polkit.enable = lib.mkDefault true;
+      seatd.enable = lib.mkDefault true;
     };
     runix.users = {
       sddm = {
@@ -170,7 +171,6 @@ in
     runix.packages = [
       cfg.sddm.package
       pkgs.dbus
-      pkgs.seatd
       pkgs.weston
       pkgs.xkeyboard_config
       sessionPackage
@@ -206,7 +206,6 @@ in
     ];
 
     runix.services = {
-      seatd.command = "${pkgs.seatd}/bin/seatd -g video";
       sddm = {
         command = "${cfg.sddm.package}/bin/sddm --config /etc/sddm.conf.d/00-runix.conf";
         after = [

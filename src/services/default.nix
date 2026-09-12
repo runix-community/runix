@@ -11,6 +11,7 @@
     ./wifi.nix
     ./polkit.nix
     ./power.nix
+    ./seatd.nix
     ./sudo.nix
     ./sysctl.nix
     ./tmpfiles.nix

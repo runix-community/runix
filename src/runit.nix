@@ -198,7 +198,7 @@ let
     set -eu
     init="$(${pkgs.coreutils}/bin/tr '\0' '\n' </proc/1/cmdline | ${pkgs.gnused}/bin/sed -n '1p')"
     system="''${init%/*}"
-    "$system/activate"
+    "$system/activate" --boot
   '';
 
   stage2 = pkgs.writeShellScript "runix-stage-2" ''
@@ -269,10 +269,12 @@ let
       ]
     }
     export RUNIX_OFFLINE=0
+    export RUNIX_BOOT=0
     case "''${1-}" in
       --offline) RUNIX_OFFLINE=1 ;;
+      --boot) RUNIX_BOOT=1 ;;
       "") ;;
-      *) echo "usage: activate [--offline]" >&2; exit 2 ;;
+      *) echo "usage: activate [--boot|--offline]" >&2; exit 2 ;;
     esac
     system="$(readlink -f "''${0%/*}")"
     mkdir -p /bin /dev /home /lib /proc /root /run/runit /sys /tmp /usr/bin /var/log/runit
@@ -351,6 +353,15 @@ let
 
     source=${serviceTree}
     target=/run/runit/service
+    supervision_active=0
+    if [ -d "$target" ]; then
+      for current in "$target"/*; do
+        if [ -e "$current/supervise/ok" ]; then
+          supervision_active=1
+          break
+        fi
+      done
+    fi
     mkdir -p "$target"
     stop_service() {
       service="$1"
@@ -389,20 +400,22 @@ let
       cp -RP "$definition"/. "$current"/
     done
     touch "$target"
-    for definition in "$source"/*; do
-      [ -d "$definition" ] || continue
-      name="''${definition##*/}"
-      current="$target/$name"
-      tries=0
-      while [ ! -e "$current/supervise/ok" ]; do
-        tries=$((tries + 1))
-        [ "$tries" -lt ${toString (cfg.runit.serviceTimeout * 10)} ] || {
-          echo "runix: runsvdir did not supervise $name" >&2
-          exit 1
-        }
-        ${pkgs.coreutils}/bin/sleep 0.1
+    if [ "$RUNIX_BOOT" = 0 ] && [ "$supervision_active" = 1 ]; then
+      for definition in "$source"/*; do
+        [ -d "$definition" ] || continue
+        name="''${definition##*/}"
+        current="$target/$name"
+        tries=0
+        while [ ! -e "$current/supervise/ok" ]; do
+          tries=$((tries + 1))
+          [ "$tries" -lt ${toString (cfg.runit.serviceTimeout * 10)} ] || {
+            echo "runix: runsvdir did not supervise $name" >&2
+            exit 1
+          }
+          ${pkgs.coreutils}/bin/sleep 0.1
+        done
       done
-    done
+    fi
 
   '';
 
