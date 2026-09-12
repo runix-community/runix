@@ -18,6 +18,14 @@ let
     runtime_changed=0
     boot_changed=0
 
+    run_quietly() {
+      output="$("$@" 2>&1)" || {
+        status="$?"
+        printf '%s\n' "$output" >&2
+        return "$status"
+      }
+    }
+
     restore_transaction() {
       status="$1"
       trap - ERR INT TERM
@@ -33,7 +41,7 @@ let
       fi
       ${lib.optionalString hasBootLoader ''
         if [ "$boot_changed" = 1 ]; then
-          ${cfg.build.installBootLoader} / || echo "runix: previous boot menu could not be restored" >&2
+          run_quietly ${cfg.build.installBootLoader} / || echo "runix: previous boot menu could not be restored" >&2
         fi
       ''}
       exit "$status"
@@ -65,7 +73,7 @@ let
     fi
     if [ "$action" != test ]; then
       boot_changed=1
-      ${lib.optionalString hasBootLoader "${cfg.build.installBootLoader} /"}
+      ${lib.optionalString hasBootLoader "run_quietly ${cfg.build.installBootLoader} /"}
     fi
     trap - ERR INT TERM
   '';
@@ -87,7 +95,7 @@ let
       "$system/verify-services"
     fi
     boot_changed=1
-    ${lib.optionalString hasBootLoader "${cfg.build.installBootLoader} /"}
+    ${lib.optionalString hasBootLoader "run_quietly ${cfg.build.installBootLoader} /"}
     trap - ERR INT TERM
   '';
 in
