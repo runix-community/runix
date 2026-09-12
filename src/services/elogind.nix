@@ -15,6 +15,10 @@ let
     session required ${pkgs.linux-pam}/lib/security/pam_unix.so
     session required ${pkgs.elogind}/lib/security/pam_elogind.so
   '';
+  dbusPolicy = pkgs.runCommand "runix-elogind-dbus-policy" { } ''
+    mkdir -p $out/share/dbus-1/system.d
+    cp ${pkgs.elogind}/share/dbus-1/system.d/* $out/share/dbus-1/system.d/
+  '';
 in
 {
   options.runix.systemServices.elogind.enable = lib.mkEnableOption "elogind session management";
@@ -31,7 +35,7 @@ in
       }
     ];
     runix.packages = [ pkgs.elogind ];
-    runix.systemServices.dbusPackages = [ pkgs.elogind ];
+    runix.systemServices.dbusPackages = [ dbusPolicy ];
     runix.preparationScripts = [
       ''
         mkdir -p /etc/elogind /etc/pam.d /run/elogind /run/user /var/lib/elogind

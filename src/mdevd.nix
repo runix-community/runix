@@ -55,8 +55,8 @@ let
     ttyS[0-9]+ 0:${gid "tty"} 660
     ${cfg.rules}
     SUBSYSTEM=sound;.* 0:${gid "audio"} 660
-    SUBSYSTEM=drm;card[0-9]+ 0:${gid "video"} 660
-    SUBSYSTEM=drm;renderD[0-9]+ 0:${gid "render"} 660
+    SUBSYSTEM=drm;dri/card[0-9]+ 0:${gid "video"} 660
+    SUBSYSTEM=drm;dri/renderD[0-9]+ 0:${gid "render"} 660
     SUBSYSTEM=input;.* 0:${gid "input"} 660
   '';
 in
