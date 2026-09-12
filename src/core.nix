@@ -142,7 +142,11 @@ let
     auth required ${pkgs.linux-pam}/lib/security/pam_unix.so
     account required ${pkgs.linux-pam}/lib/security/pam_unix.so
     password required ${pkgs.linux-pam}/lib/security/pam_unix.so
+    session required ${pkgs.linux-pam}/lib/security/pam_env.so conffile=/etc/security/pam_env.conf readenv=0
     session required ${pkgs.linux-pam}/lib/security/pam_unix.so
+  '';
+  pamEnvironment = pkgs.writeText "runix-pam-env" ''
+    PATH DEFAULT=/run/wrappers/bin:/run/current-system/sw/bin:/run/current-system/sw/sbin
   '';
   unixChkpwdWrapperSource = pkgs.writeText "runix-unix-chkpwd-wrapper.c" ''
     #include <stdio.h>
@@ -299,8 +303,9 @@ in
       };
       preparationScripts = lib.mkBefore [
         ''
-          mkdir -p /etc/pam.d /run/wrappers/bin
+          mkdir -p /etc/pam.d /etc/security /run/wrappers/bin
           ln -sfn ${pamLogin} /etc/pam.d/login
+          ln -sfn ${pamEnvironment} /etc/security/pam_env.conf
           ${pkgs.coreutils}/bin/install -m4755 -o root -g root \
             ${unixChkpwdWrapper} /run/wrappers/bin/unix_chkpwd
         ''

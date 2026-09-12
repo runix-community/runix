@@ -12,6 +12,7 @@ let
     auth required ${pkgs.linux-pam}/lib/security/pam_unix.so
     account required ${pkgs.linux-pam}/lib/security/pam_unix.so
     password required ${pkgs.linux-pam}/lib/security/pam_unix.so
+    session required ${pkgs.linux-pam}/lib/security/pam_env.so conffile=/etc/security/pam_env.conf readenv=0
     session required ${pkgs.linux-pam}/lib/security/pam_unix.so
     session optional ${pkgs.elogind}/lib/security/pam_elogind.so
   '';
