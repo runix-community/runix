@@ -276,13 +276,12 @@ let
     esac
     system="$(readlink -f "''${0%/*}")"
     mkdir -p /bin /dev /home /lib /proc /root /run/runit /sys /tmp /usr/bin /var/log/runit
-    if [ -e /var/run ] && [ ! -L /var/run ]; then
-      rmdir /var/run || {
-        echo "runix: /var/run exists and is not an empty directory" >&2
-        exit 1
-      }
+    if [ -e /var/run ] && [ ! -L /var/run ] && [ ! -d /run/runit/service ]; then
+      rm -rf /var/run
     fi
-    ln -sfn /run /var/run
+    if [ ! -e /var/run ]; then
+      ln -s /run /var/run
+    fi
     chmod 1777 /tmp
     ${pkgs.bash}/bin/bash ${./activate-etc.sh} ${etcTree} / ${
       if config.fileSystems == { } then "1" else "0"

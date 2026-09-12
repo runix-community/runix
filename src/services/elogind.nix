@@ -8,6 +8,13 @@ let
   logindConfig = pkgs.writeText "runix-logind.conf" ''
     [Login]
   '';
+  pamLogin = pkgs.writeText "runix-pam-login" ''
+    auth required ${pkgs.linux-pam}/lib/security/pam_unix.so
+    account required ${pkgs.linux-pam}/lib/security/pam_unix.so
+    password required ${pkgs.linux-pam}/lib/security/pam_unix.so
+    session required ${pkgs.linux-pam}/lib/security/pam_unix.so
+    session required ${pkgs.elogind}/lib/security/pam_elogind.so
+  '';
 in
 {
   options.runix.systemServices.elogind.enable = lib.mkEnableOption "elogind session management";
@@ -27,12 +34,14 @@ in
     runix.systemServices.dbusPackages = [ pkgs.elogind ];
     runix.preparationScripts = [
       ''
-        mkdir -p /etc/elogind /run/elogind /run/user /var/lib/elogind
+        mkdir -p /etc/elogind /etc/pam.d /run/elogind /run/user /var/lib/elogind
         ln -sfn ${logindConfig} /etc/elogind/logind.conf
+        ln -sfn ${pamLogin} /etc/pam.d/login
       ''
     ];
     runix.services.elogind = {
       command = "${pkgs.elogind}/libexec/elogind";
+      environment.DBUS_SYSTEM_BUS_ADDRESS = "unix:path=/run/dbus/system_bus_socket";
       after = [
         "dbus"
         "mdevd-coldplug"
