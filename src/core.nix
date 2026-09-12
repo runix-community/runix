@@ -72,10 +72,15 @@ let
     extraGroups = [ ];
   };
 
-  normalizedUsers = {
-    root = rootUser;
-  }
-  // cfg.users;
+  normalizedUsers = lib.mapAttrs (
+    _: user:
+    user
+    // {
+      extraGroups = lib.unique (
+        user.extraGroups ++ lib.optional (config.services.pipewire.enable && user.uid >= 1000) "audio"
+      );
+    }
+  ) ({ root = rootUser; } // cfg.users);
 
   passwd = lib.concatMapAttrsStringSep "\n" (
     name: user:

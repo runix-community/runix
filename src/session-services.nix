@@ -41,6 +41,12 @@ let
       exit 1
     fi
 
+    exec 9>"$XDG_RUNTIME_DIR/runix-audio.lock"
+    if ! ${pkgs.util-linux}/bin/flock -n 9; then
+      echo "runix: audio session is already running" >&2
+      exit 0
+    fi
+
     export PIPEWIRE_RUNTIME_DIR="$XDG_RUNTIME_DIR"
     services="$(${pkgs.coreutils}/bin/mktemp -d "$XDG_RUNTIME_DIR/runix-audio.XXXXXX")"
     for definition in ${pipewireServiceTree}/*; do
