@@ -42,9 +42,7 @@ let
     fi
 
     export PIPEWIRE_RUNTIME_DIR="$XDG_RUNTIME_DIR"
-    services="$XDG_RUNTIME_DIR/runix/runit"
-    ${pkgs.coreutils}/bin/rm -rf "$services"
-    ${pkgs.coreutils}/bin/mkdir -p "$services"
+    services="$(${pkgs.coreutils}/bin/mktemp -d "$XDG_RUNTIME_DIR/runix-audio.XXXXXX")"
     ${pkgs.coreutils}/bin/cp -RP ${pipewireServiceTree}/. "$services"/
 
     ${runit}/bin/runsvdir "$services" &
@@ -57,6 +55,7 @@ let
       done
       kill -TERM "$supervisor" 2>/dev/null || true
       wait "$supervisor" 2>/dev/null || true
+      ${pkgs.coreutils}/bin/rm -rf "$services"
     }
     trap cleanup EXIT INT TERM
     wait "$supervisor"
