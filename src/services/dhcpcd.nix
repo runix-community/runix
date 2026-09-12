@@ -11,6 +11,7 @@ let
     option domain_name_servers, domain_name, domain_search, host_name
     option classless_static_routes, interface_mtu
     nohook lookup-hostname
+    nohook resolv.conf
     denyinterfaces lo peth* vif* tap* tun* virbr* vnet* vboxnet* sit*
   '';
 in
@@ -36,12 +37,13 @@ in
       ''
         mkdir -p /run/dhcpcd /var/db/dhcpcd /var/lib/dhcpcd
         chown dhcpcd:dhcpcd /var/db/dhcpcd /var/lib/dhcpcd
+        ln -sfn ${dhcpcdConfig} /etc/dhcpcd.conf
         rm -f /etc/resolv.conf
         printf 'nameserver 1.1.1.1\n' > /etc/resolv.conf
       ''
     ];
     runix.services.dhcpcd = {
-      command = "${pkgs.dhcpcd}/bin/dhcpcd -B -f ${dhcpcdConfig}";
+      command = "${pkgs.dhcpcd}/bin/dhcpcd -B -q -f ${dhcpcdConfig}";
       after = [ "mdevd-coldplug" ];
     };
   };

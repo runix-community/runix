@@ -1,5 +1,6 @@
 {
   coreutils,
+  inetutils,
   lib,
   nix,
   sudo,
@@ -9,6 +10,7 @@ writeShellApplication {
   name = "runix";
   runtimeInputs = [
     coreutils
+    inetutils
     nix
   ];
   text = ''
