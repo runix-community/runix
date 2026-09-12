@@ -143,6 +143,7 @@ let
     ${pkgs.coreutils}/bin/mv "$config_file" "$boot/grub/grub.cfg"
     ${pkgs.coreutils}/bin/sync -f "$boot"
     ${grubPackage}/bin/grub-install \
+      --quiet \
       --boot-directory="$boot" \
       --recheck \
       ${

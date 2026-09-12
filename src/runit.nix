@@ -228,7 +228,13 @@ let
   verifyServices = pkgs.writeShellScript "runix-verify-services" ''
     set -eu
     ${lib.concatMapStringsSep "\n" (name: ''
-      ${cfg.runit.package}/bin/sv -w ${toString cfg.runit.serviceTimeout} check ${lib.escapeShellArg "/run/runit/service/${name}"}
+      if ! output="$(${cfg.runit.package}/bin/sv -w ${toString cfg.runit.serviceTimeout} check ${
+        lib.escapeShellArg "/run/runit/service/${name}"
+      } 2>&1)"; then
+        echo "runix: service ${name} failed its readiness check" >&2
+        printf '%s\n' "$output" >&2
+        exit 1
+      fi
     '') serviceNames}
   '';
 
@@ -342,12 +348,12 @@ let
     stop_service() {
       service="$1"
       if [ -d "$service/supervise" ]; then
-        ${cfg.runit.package}/bin/sv -w ${toString cfg.runit.serviceTimeout} force-stop "$service" || true
-        ${cfg.runit.package}/bin/sv exit "$service" || true
+        ${cfg.runit.package}/bin/sv -w ${toString cfg.runit.serviceTimeout} force-stop "$service" >/dev/null 2>&1 || true
+        ${cfg.runit.package}/bin/sv exit "$service" >/dev/null 2>&1 || true
       fi
       if [ -d "$service/log/supervise" ]; then
-        ${cfg.runit.package}/bin/sv -w ${toString cfg.runit.serviceTimeout} force-stop "$service/log" || true
-        ${cfg.runit.package}/bin/sv exit "$service/log" || true
+        ${cfg.runit.package}/bin/sv -w ${toString cfg.runit.serviceTimeout} force-stop "$service/log" >/dev/null 2>&1 || true
+        ${cfg.runit.package}/bin/sv exit "$service/log" >/dev/null 2>&1 || true
       fi
     }
     for current in "$target"/*; do
