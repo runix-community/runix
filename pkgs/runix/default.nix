@@ -29,7 +29,7 @@ writeShellApplication {
       bootloader [ROOT]     Refresh the configured bootloader (ROOT defaults to /)
       list-generations      List registered system generations
       delete-generations GENERATION...
-                            Delete profile generations through nix-env
+                            Delete profile generations and collect their unused store paths
 
     Options:
       --flake PATH[#HOST]   Flake and runixConfigurations host to use
@@ -175,6 +175,7 @@ writeShellApplication {
       delete-generations)
         [ "''${#action_args[@]}" -gt 0 ] || die "delete-generations requires at least one generation"
         as_root nix-env --option build-users-group "" --profile "$profile" --delete-generations "''${action_args[@]}"
+        as_root nix-store --gc
         ;;
     esac
   '';

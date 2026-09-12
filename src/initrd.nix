@@ -211,13 +211,11 @@ let
         init=*) stage2_init="''${option#init=}" ;;
       esac
     done
-    system="$(dirname "$stage2_init")"
     mkdir -p /sysroot/dev /sysroot/proc /sysroot/run /sysroot/sys
     mount --bind /dev /sysroot/dev
     mount --bind /proc /sysroot/proc
     mount --bind /run /sysroot/run
     mount --bind /sys /sysroot/sys
-    chroot /sysroot "$system/activate"
     kill -TERM "$mdevd_pid" 2>/dev/null || true
     wait "$mdevd_pid" 2>/dev/null || true
     umount /sysroot/dev /sysroot/proc /sysroot/run /sysroot/sys
