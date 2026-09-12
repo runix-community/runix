@@ -83,7 +83,7 @@ let
   ) normalizedUsers;
 
   shadow = lib.concatMapAttrsStringSep "\n" (
-    name: user: "${name}:${user.passwordHash}:1::::::"
+    name: user: "${name}:${user.passwordHash}:1:0:99999:7:::"
   ) normalizedUsers;
 
   configuredGroups = {
