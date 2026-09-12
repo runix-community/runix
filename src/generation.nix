@@ -28,7 +28,8 @@ let
 
     current_generation() {
       link="$(${pkgs.coreutils}/bin/readlink "$profile" 2>/dev/null || true)"
-      link="''${link##*/system-}"
+      link="''${link##*/}"
+      link="''${link#system-}"
       printf '%s\n' "''${link%-link}"
     }
 

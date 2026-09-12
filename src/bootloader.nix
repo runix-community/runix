@@ -83,6 +83,78 @@ let
 
     boot_files="$boot/runix"
     ${pkgs.coreutils}/bin/mkdir -p "$boot_files"
+    keep_file="$(${pkgs.coreutils}/bin/mktemp)"
+    preserve_file="$(${pkgs.coreutils}/bin/mktemp)"
+    trap '${pkgs.coreutils}/bin/rm -f "$keep_file" "$preserve_file"' EXIT
+
+    artifact_name() {
+      source="$(${pkgs.coreutils}/bin/readlink -f "$1")"
+      package="''${source%/*}"
+      printf '%s-%s\n' "''${package##*/}" "$2"
+    }
+
+    for selected_link in "''${generations[@]}"; do
+      if [ "$selected_link" = current ]; then
+        selected_system=${cfg.build.system}
+      else
+        selected_system="$(${pkgs.coreutils}/bin/readlink -f "$selected_link")"
+      fi
+      artifact_name "$selected_system/kernel" kernel >> "$keep_file"
+      artifact_name "$selected_system/initrd" initrd >> "$keep_file"
+    done
+
+    ${
+      if selectedLoader == "grub" then
+        ''
+          if [ -r "$boot/grub/grub.cfg" ]; then
+            while read -r command path _; do
+              case "$command" in
+                linux|initrd)
+                  printf '%s\n' "''${path##*/}" >> "$preserve_file"
+                  [ "$(${pkgs.coreutils}/bin/wc -l < "$preserve_file")" -lt 2 ] || break
+                  ;;
+              esac
+            done < "$boot/grub/grub.cfg"
+          fi
+        ''
+      else
+        ''
+          if [ -r "$boot/limine/limine.conf" ]; then
+            while read -r command path _; do
+              case "$command" in
+                path:|module_path:)
+                  printf '%s\n' "''${path##*/}" >> "$preserve_file"
+                  [ "$(${pkgs.coreutils}/bin/wc -l < "$preserve_file")" -lt 2 ] || break
+                  ;;
+              esac
+            done < "$boot/limine/limine.conf"
+          fi
+        ''
+    }
+
+    is_listed() {
+      wanted="$1"
+      list="$2"
+      while IFS= read -r item; do
+        [ "$item" != "$wanted" ] || return 0
+      done < "$list"
+      return 1
+    }
+
+    cleanup_boot_files() {
+      preserve_current="$1"
+      for existing in "$boot_files"/*-kernel "$boot_files"/*-initrd; do
+        [ -e "$existing" ] || continue
+        basename="''${existing##*/}"
+        is_listed "$basename" "$keep_file" && continue
+        if [ "$preserve_current" = 1 ] && is_listed "$basename" "$preserve_file"; then
+          continue
+        fi
+        ${pkgs.coreutils}/bin/rm -f "$existing"
+      done
+    }
+
+    cleanup_boot_files 1
     install_generation() {
       generation_params=${lib.escapeShellArg kernelParams}
       generation_root="$root_params"
@@ -106,10 +178,13 @@ let
         configured="$(< "$system/root-params")"
         [ -z "$configured" ] || generation_root="$configured"
       fi
+      generation_kernel_file="$(artifact_name "$system/kernel" kernel)"
+      generation_initrd_file="$(artifact_name "$system/initrd" initrd)"
       for artifact in kernel initrd; do
-        if [ ! -e "$boot_files/$name-$artifact" ]; then
-          ${pkgs.coreutils}/bin/install -m0644 "$system/$artifact" "$boot_files/$name-$artifact.tmp"
-          ${pkgs.coreutils}/bin/mv "$boot_files/$name-$artifact.tmp" "$boot_files/$name-$artifact"
+        artifact_file="$(artifact_name "$system/$artifact" "$artifact")"
+        if [ ! -e "$boot_files/$artifact_file" ]; then
+          ${pkgs.coreutils}/bin/install -m0644 "$system/$artifact" "$boot_files/$artifact_file.tmp"
+          ${pkgs.coreutils}/bin/mv "$boot_files/$artifact_file.tmp" "$boot_files/$artifact_file"
         fi
       done
     }
@@ -131,16 +206,16 @@ let
         generation=current
         system=${cfg.build.system}
       else
-        generation="''${link##*/system-}"
+        generation="''${link##*/}"
+        generation="''${generation#system-}"
         generation="''${generation%-link}"
         system="$(${pkgs.coreutils}/bin/readlink -f "$link")"
       fi
-      name="''${system##*/}"
       install_generation
       ${pkgs.coreutils}/bin/printf '%s\n' \
         "menuentry '$generation_title' {" \
-        "  linux $boot_path/$name-kernel init=$system/init $generation_params $generation_root" \
-        "  initrd $boot_path/$name-initrd" \
+        "  linux $boot_path/$generation_kernel_file init=$system/init $generation_params $generation_root" \
+        "  initrd $boot_path/$generation_initrd_file" \
         '}' >>"$config_file"
       if [ "$first" -eq 1 ]; then
         ${pkgs.coreutils}/bin/printf '%s\n' "submenu 'Other generations' {" >>"$config_file"
@@ -170,6 +245,7 @@ let
             ${lib.escapeShellArg loader.grub.device}
           ''
       }
+    cleanup_boot_files 0
   '';
 
   limineEfiFile =
@@ -196,11 +272,11 @@ let
         generation=current
         system=${cfg.build.system}
       else
-        generation="''${link##*/system-}"
+        generation="''${link##*/}"
+        generation="''${generation#system-}"
         generation="''${generation%-link}"
         system="$(${pkgs.coreutils}/bin/readlink -f "$link")"
       fi
-      name="''${system##*/}"
       install_generation
       if [ "$first" -eq 1 ]; then
         title="/$generation_title"
@@ -214,8 +290,8 @@ let
       ${pkgs.coreutils}/bin/printf '%s\n' \
         "$title" \
         'protocol: linux' \
-        "path: boot():$boot_path/$name-kernel" \
-        "module_path: boot():$boot_path/$name-initrd" \
+        "path: boot():$boot_path/$generation_kernel_file" \
+        "module_path: boot():$boot_path/$generation_initrd_file" \
         "cmdline: init=$system/init $generation_params $generation_root" >>"$config_file"
       [ "$first" -ne 1 ] || first=0
     done
@@ -238,6 +314,7 @@ let
           ${loader.limine.package}/bin/limine bios-install ${lib.escapeShellArg loader.limine.device}
         ''
     }
+    cleanup_boot_files 0
   '';
 in
 {
@@ -254,7 +331,7 @@ in
     };
     configurationLimit = lib.mkOption {
       type = lib.types.ints.positive;
-      default = 10;
+      default = 5;
       description = "Maximum number of system profile generations in the boot menu.";
     };
     grub = {
