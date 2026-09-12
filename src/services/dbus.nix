@@ -43,6 +43,7 @@ in
         fi
         ln -sfn /var/lib/dbus/machine-id /etc/machine-id
         ln -sfn ${dbusConfig}/system.conf /etc/dbus-1/system.conf
+        ln -sfn ${pkgs.dbus}/share/dbus-1/session.conf /etc/dbus-1/session.conf
         ${pkgs.coreutils}/bin/install -m4750 -o root -g messagebus \
           ${pkgs.dbus}/libexec/dbus-daemon-launch-helper \
           /run/wrappers/bin/dbus-daemon-launch-helper
