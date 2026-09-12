@@ -192,8 +192,10 @@ let
     }
     [ -n "$root_fs_type" ] || root_fs_type=auto
     [ -n "$root_options" ] || root_options=defaults
+    echo "runix: loading initrd modules" >/dev/console
     ${loadModules}
-    /bin/mdevd -D 3 -f /etc/mdev.conf -F /lib/firmware -O 4 3>/run/mdevd-initrd-ready &
+    echo "runix: starting initrd device manager" >/dev/console
+    /bin/mdevd -D 3 -f /etc/mdev.conf -F /lib/firmware -O 2 3>/run/mdevd-initrd-ready &
     mdevd_pid="$!"
     tries=0
     until [ -s /run/mdevd-initrd-ready ]; do
@@ -202,7 +204,9 @@ let
       [ "$tries" -lt 300 ] || exit 1
       sleep 0.1
     done
-    /bin/timeout ${toString cfg.initrd.rootTimeout} /bin/mdevd-coldplug -O 4
+    echo "runix: coldplugging devices" >/dev/console
+    /bin/timeout ${toString cfg.initrd.rootTimeout} /bin/mdevd-coldplug -O 2
+    echo "runix: mounting root filesystems" >/dev/console
     ${mountRoot}
 
     stage2_init=/init
@@ -227,6 +231,7 @@ let
     mount -t devpts -o gid=5,mode=0620,ptmxmode=0666 devpts /sysroot/dev/pts
     ln -sf pts/ptmx /sysroot/dev/ptmx
     mount -t tmpfs -o mode=1777,nosuid,nodev tmpfs /sysroot/dev/shm
+    echo "runix: switching to stage 2" >/dev/console
     exec switch_root /sysroot "$stage2_init"
   '';
 

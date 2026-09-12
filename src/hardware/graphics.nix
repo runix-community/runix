@@ -63,7 +63,6 @@ in
       video.gid = lib.mkDefault 26;
       render.gid = lib.mkDefault 303;
     };
-    runix.kernel.modules = cfg.kernelModules;
     runix.initrd = lib.mkIf cfg.initrd.enable {
       modules = cfg.initrd.kernelModules;
       loadModules = cfg.initrd.kernelModules;

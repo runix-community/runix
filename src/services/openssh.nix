@@ -6,13 +6,19 @@
 }:
 let
   cfg = config.runix.systemServices.openssh;
+  pamConfig = pkgs.writeText "runix-pam-sshd" ''
+    auth required ${pkgs.linux-pam}/lib/security/pam_unix.so
+    account required ${pkgs.linux-pam}/lib/security/pam_unix.so
+    session required ${pkgs.linux-pam}/lib/security/pam_env.so conffile=/etc/security/pam_env.conf readenv=0
+    session required ${pkgs.linux-pam}/lib/security/pam_unix.so
+  '';
   sshdConfig = pkgs.writeText "runix-sshd-config" ''
     Port 22
     HostKey /var/lib/runix/ssh/ssh_host_ed25519_key
     HostKey /var/lib/runix/ssh/ssh_host_rsa_key
     PasswordAuthentication ${if cfg.passwordAuthentication then "yes" else "no"}
     PermitRootLogin ${if cfg.permitRootLogin then "yes" else "no"}
-    UsePAM no
+    UsePAM yes
     PidFile /run/sshd.pid
     Subsystem sftp ${pkgs.openssh}/libexec/sftp-server
   '';
@@ -42,7 +48,8 @@ in
     runix.packages = [ pkgs.openssh ];
     runix.preparationScripts = [
       ''
-        mkdir -p /run/sshd /var/empty /var/lib/runix/ssh
+        mkdir -p /etc/pam.d /run/sshd /var/empty /var/lib/runix/ssh
+        ln -sfn ${pamConfig} /etc/pam.d/sshd
         if [ ! -s /var/lib/runix/ssh/ssh_host_ed25519_key ]; then
           ${pkgs.openssh}/bin/ssh-keygen -q -t ed25519 -N "" -f /var/lib/runix/ssh/ssh_host_ed25519_key
         fi

@@ -198,7 +198,9 @@ let
     set -eu
     init="$(${pkgs.coreutils}/bin/tr '\0' '\n' </proc/1/cmdline | ${pkgs.gnused}/bin/sed -n '1p')"
     system="''${init%/*}"
+    echo "runix: activating stage 2" >/dev/console
     "$system/activate" --boot
+    echo "runix: stage 2 activated" >/dev/console
   '';
 
   stage2 = pkgs.writeShellScript "runix-stage-2" ''
