@@ -274,7 +274,10 @@ in
     );
 
     runix = {
-      kernel.parameters = lib.mkBefore [ "loglevel=4" ];
+      kernel.parameters = lib.mkBefore [
+        "quiet"
+        "loglevel=3"
+      ];
       kernel.modules = lib.mkBefore [
         "i8042"
         "atkbd"

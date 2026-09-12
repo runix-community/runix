@@ -159,7 +159,6 @@ let
     #!/bin/sh
     set -eu
     export PATH=/bin:/sbin
-    echo "runix: initrd" >/dev/console
     mkdir -p /dev /proc /run /sys /sysroot
     mount -t proc proc /proc
     mount -t sysfs sysfs /sys

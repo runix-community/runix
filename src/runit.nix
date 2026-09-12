@@ -203,9 +203,9 @@ let
 
   stage2 = pkgs.writeShellScript "runix-stage-2" ''
     export PATH=${cfg.runit.package}/bin
-    echo "runix: stage 2" >/dev/console
     ${pkgs.coreutils}/bin/rm -f /run/runit/stop
-    ${cfg.runit.package}/bin/runsvdir /run/runit/service &
+    ${pkgs.coreutils}/bin/mkdir -p /var/log/runit
+    ${cfg.runit.package}/bin/runsvdir /run/runit/service >>/var/log/runit/runsvdir.log 2>&1 &
     supervisor="$!"
     trap 'kill -TERM "$supervisor" 2>/dev/null || true; wait "$supervisor" 2>/dev/null || true; exit 0' TERM
     while [ ! -e /run/runit/stop ]; do
