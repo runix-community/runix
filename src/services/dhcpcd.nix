@@ -43,7 +43,7 @@ in
       ''
     ];
     runix.services.dhcpcd = {
-      command = "${pkgs.dhcpcd}/bin/dhcpcd -B -q -f ${dhcpcdConfig}";
+      command = "${pkgs.dhcpcd}/bin/dhcpcd --nodev -B -q -f ${dhcpcdConfig}";
       after = [ "mdevd-coldplug" ];
     };
   };
