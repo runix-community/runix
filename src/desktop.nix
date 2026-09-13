@@ -8,6 +8,7 @@ let
   cfg = config.runix.desktop;
   programs = config.programs;
   pam = pkgs.linux-pam;
+  desktopPackages = import ../pkgs/desktop.nix { inherit pkgs; };
 
   sessionCommand = pkgs.writeShellScript "runix-hyprland-session" ''
     export PATH=/run/wrappers/bin:/run/current-system/sw/bin:/run/current-system/sw/sbin
