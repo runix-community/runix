@@ -87,7 +87,7 @@ in
     sddm = {
       package = lib.mkOption {
         type = lib.types.package;
-        default = pkgs.kdePackages.sddm;
+        default = desktopPackages.sddm;
         description = "SDDM package.";
       };
       theme = lib.mkOption {
@@ -217,17 +217,12 @@ in
         command = "${cfg.sddm.package}/bin/sddm --config /etc/sddm.conf.d/00-runix.conf";
         after = [
           "dbus"
+          "elogind"
+          "polkit"
           "seatd"
           "mdevd-coldplug"
         ];
-        check = ''
-          for socket in /tmp/sddm-*; do
-            [ -S "$socket" ] && exit 0
-          done
-          exit 1
-        '';
       };
-      elogind.after = [ "sddm" ];
     };
   };
 }

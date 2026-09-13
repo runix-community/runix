@@ -23,9 +23,19 @@ let
   weston = (pkgs.weston.override { inherit libinput; }).overrideAttrs (old: {
     mesonFlags = (old.mesonFlags or [ ]) ++ [ "-Dsystemd=false" ];
   });
+
+  sddmUnwrapped = pkgs.kdePackages.sddm.unwrapped.overrideAttrs (old: {
+    cmakeFlags = (old.cmakeFlags or [ ]) ++ [
+      "-DENABLE_JOURNALD=OFF"
+      "-DNO_SYSTEMD=ON"
+      "-DUSE_ELOGIND=OFF"
+    ];
+  });
+
+  sddm = pkgs.kdePackages.sddm.override { sddm-unwrapped = sddmUnwrapped; };
 in
 {
-  inherit libinput pipewire weston;
+  inherit libinput pipewire sddm weston;
 
   wireplumber = pkgs.wireplumber.override { inherit pipewire; };
 
