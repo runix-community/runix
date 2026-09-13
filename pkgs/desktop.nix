@@ -7,9 +7,11 @@ let
     wacomSupport = false;
   };
 
-  aquamarine = pkgs.aquamarine.override {
+  aquamarine = (pkgs.aquamarine.override {
     inherit libinput udev;
-  };
+  }).overrideAttrs (old: {
+    patches = (old.patches or [ ]) ++ [ ./aquamarine-libudev-zero.patch ];
+  });
 
   pipewire =
     (pkgs.pipewire.override {

@@ -1,0 +1,40 @@
+diff --git a/include/aquamarine/backend/Session.hpp b/include/aquamarine/backend/Session.hpp
+index 977744d..8e990a0 100644
+--- a/include/aquamarine/backend/Session.hpp
++++ b/include/aquamarine/backend/Session.hpp
+@@ -214,6 +214,7 @@ namespace Aquamarine {
+         std::vector<Hyprutils::Memory::CSharedPointer<CLibinputDevice>> libinputDevices;
+ 
+         udev*                                                           udevHandle     = nullptr;
++        udev*                                                           libinputUdevHandle = nullptr;
+         udev_monitor*                                                   udevMonitor    = nullptr;
+         libseat*                                                        libseatHandle  = nullptr;
+         libinput*                                                       libinputHandle = nullptr;
+diff --git a/src/backend/Session.cpp b/src/backend/Session.cpp
+index ab75a07..4a08313 100644
+--- a/src/backend/Session.cpp
++++ b/src/backend/Session.cpp
+@@ -340,7 +340,13 @@ SP<CSession> CSession::attempt(SP<CBackend> backend_) {
+ 
+     // ----------- Libinput
+ 
+-    session->libinputHandle = libinput_udev_create_context(&libinputListener, session.get(), session->udevHandle);
++    session->libinputUdevHandle = udev_new();
++    if (!session->libinputUdevHandle) {
++        session->backend->log(AQ_LOG_ERROR, "udev: failed to create a libinput context");
++        return nullptr;
++    }
++
++    session->libinputHandle = libinput_udev_create_context(&libinputListener, session.get(), session->libinputUdevHandle);
+     if (!session->libinputHandle) {
+         session->backend->log(AQ_LOG_ERROR, "libinput: failed to create a new context");
+         return nullptr;
+@@ -383,6 +389,8 @@ Aquamarine::CSession::~CSession() {
+         udev_monitor_unref(udevMonitor);
+     if (udevHandle)
+         udev_unref(udevHandle);
++    if (libinputUdevHandle)
++        udev_unref(libinputUdevHandle);
+ 
+     libseatHandle = nullptr;
+     udevMonitor   = nullptr;
