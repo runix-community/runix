@@ -23,7 +23,7 @@ let
         audio_supervisor=$!
         trap 'kill -TERM "$audio_supervisor" 2>/dev/null || true; wait "$audio_supervisor" 2>/dev/null || true' EXIT INT TERM
       ''}
-      ${programs.hyprland.package}/bin/Hyprland
+      ${programs.hyprland.package}/bin/start-hyprland
     ''}
   '';
 
