@@ -21,13 +21,15 @@
       packages = forAllSystems (
         system:
         let
-          pkgs = mkPkgs system;
-          desktopPackages = import ./pkgs/desktop.nix { inherit pkgs; };
-          runit = pkgs.callPackage ./pkgs/runit { };
+           pkgs = mkPkgs system;
+           desktopPackages = import ./pkgs/desktop.nix { inherit pkgs; };
+           fetchPackages = import ./pkgs/fetch.nix { inherit pkgs; };
+           runit = pkgs.callPackage ./pkgs/runit { };
           runix = pkgs.callPackage ./pkgs/runix { };
           runix-install = pkgs.callPackage ./pkgs/runix-install { };
-          bspwm = pkgs.bspwm;
-          inherit (desktopPackages) hyprland labwc niri;
+           bspwm = pkgs.bspwm;
+           inherit (fetchPackages) fastfetch pfetch;
+           inherit (desktopPackages) hyprland labwc niri;
           qtile = pkgs.python3Packages.qtile;
           sxhkd = pkgs.sxhkd;
           consoleSource = pkgs.writeText "runix-console.c" ''
@@ -97,11 +99,13 @@
         {
           default = runit;
           inherit
-            bspwm
-            hyprland
+             bspwm
+             fastfetch
+             hyprland
             labwc
-            niri
-            qtile
+             niri
+             pfetch
+             qtile
             runit
             runix
             runix-install

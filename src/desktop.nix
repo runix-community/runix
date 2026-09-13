@@ -9,6 +9,7 @@ let
   programs = config.programs;
   pam = pkgs.linux-pam;
   desktopPackages = import ../pkgs/desktop.nix { inherit pkgs; };
+  hiddenUsers = lib.filter (lib.hasPrefix "nixbld") (builtins.attrNames config.runix.users);
 
   sessionCommand = pkgs.writeShellScript "runix-hyprland-session" ''
     export PATH=/run/wrappers/bin:/run/current-system/sw/bin:/run/current-system/sw/sbin
@@ -52,6 +53,7 @@ let
 
     [Users]
     MaximumUid=60000
+    HideUsers=${lib.concatStringsSep "," hiddenUsers}
     HideShells=/bin/false
 
     [Wayland]

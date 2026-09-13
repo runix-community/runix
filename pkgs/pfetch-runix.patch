@@ -1,0 +1,23 @@
+diff --git a/pfetch b/pfetch
+index 3f62187..fbfd778 100755
+--- a/pfetch
++++ b/pfetch
+@@ -1603,6 +1603,18 @@ get_ascii() {
+ 			EOF
+         ;;
+ 
++        ([Rr]unix*)
++            read_ascii 2 <<-EOF
++				${c7}  \\  ${c2}\\ //
++				${c7} ==\\__${c2}\\/ ${c7}//
++				${c2}   //   \\${c7}//
++				${c2}==//     ${c7}//==
++				${c2} //${c7}\\${c2}___${c7}//
++				${c2}// ${c7}/\\  ${c2}\\==
++				  ${c7}// \\  ${c2}\\
++			EOF
++        ;;
++
+         ([Nn]ix[Oo][Ss]*)
+             read_ascii 4 <<-EOF
+ 				${c4}  \\  \\ //
