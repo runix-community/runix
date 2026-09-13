@@ -42,6 +42,7 @@ let
   sddmConfig = pkgs.writeText "runix-sddm.conf" ''
     [General]
     DisplayServer=wayland
+    GreeterEnvironment=XDG_RUNTIME_DIR=/run/sddm
     HaltCommand=/run/current-system/bin/poweroff
     RebootCommand=/run/current-system/bin/reboot
 
