@@ -4,7 +4,7 @@ let
     patches = (old.patches or [ ]) ++ [ ./pfetch-runix.patch ];
   });
 
-  fastfetch = pkgs.fastfetch.overrideAttrs (old: {
+  fastfetch-unwrapped = pkgs.fastfetch-unwrapped.overrideAttrs (old: {
     postPatch = (old.postPatch or "") + ''
       install -m 0644 ${../assets/runix-logo-fastfetch.txt} src/logo/ascii/r/runix.txt
       substituteInPlace src/logo/ascii/r.inc \
@@ -14,7 +14,7 @@ let
     #ifdef FASTFETCH_DATATEXT_LOGO_RUNIX
     // Runix
     {
-        .names = { "Runix" },
+        .names = { "Runix", "runix" },
         .lines = FASTFETCH_DATATEXT_LOGO_RUNIX,
         .colors = {
             FF_COLOR_FG_RGB "125;125;125",
@@ -26,7 +26,9 @@ let
     #endif'
     '';
   });
+
+  fastfetch = pkgs.fastfetch.override { inherit fastfetch-unwrapped; };
 in
 {
-  inherit fastfetch pfetch;
+  inherit fastfetch fastfetch-unwrapped pfetch;
 }

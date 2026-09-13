@@ -251,6 +251,15 @@ let
     printf '%s\n' ${lib.escapeShellArg cfg.build.gshadow} > "$out/gshadow"
     printf '127.0.0.1 localhost\n127.0.1.1 %s\n' ${lib.escapeShellArg cfg.hostName} > "$out/hosts"
     printf 'nameserver 1.1.1.1\n' > "$out/resolv.conf"
+    printf '%s\n' ${lib.escapeShellArg ''
+      NAME="Runix"
+      ID=runix
+      ID_LIKE=nixos
+      PRETTY_NAME="Runix"
+      HOME_URL="https://github.com/runix-community/runix"
+      SUPPORT_URL="https://github.com/runix-community/runix/issues"
+      BUG_REPORT_URL="https://github.com/runix-community/runix/issues"
+    ''} > "$out/os-release"
     cp ${cfg.build.fstab} "$out/fstab"
     printf '%s\n' ${lib.escapeShellArg ''
       export PATH=/run/wrappers/bin:/run/current-system/sw/bin:/run/current-system/sw/sbin

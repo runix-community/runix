@@ -28,7 +28,7 @@
           runix = pkgs.callPackage ./pkgs/runix { };
           runix-install = pkgs.callPackage ./pkgs/runix-install { };
            bspwm = pkgs.bspwm;
-           inherit (fetchPackages) fastfetch pfetch;
+           inherit (fetchPackages) fastfetch fastfetch-unwrapped pfetch;
            inherit (desktopPackages) hyprland labwc niri;
           qtile = pkgs.python3Packages.qtile;
           sxhkd = pkgs.sxhkd;
@@ -101,6 +101,7 @@
           inherit
              bspwm
              fastfetch
+             fastfetch-unwrapped
              hyprland
             labwc
              niri
