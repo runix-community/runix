@@ -30,6 +30,12 @@ let
       "-DNO_SYSTEMD=ON"
       "-DUSE_ELOGIND=OFF"
     ];
+    postPatch = (old.postPatch or "") + ''
+      substituteInPlace src/daemon/SeatManager.cpp \
+        --replace-fail \
+          'if (DaemonApp::instance()->testing() || !Logind::isAvailable()) {' \
+          'if (true) {'
+    '';
   });
 
   sddm = pkgs.kdePackages.sddm.override { sddm-unwrapped = sddmUnwrapped; };
