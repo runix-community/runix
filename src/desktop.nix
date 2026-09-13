@@ -216,6 +216,7 @@ in
     runix.services = {
       sddm = {
         command = "${cfg.sddm.package}/bin/sddm --config /etc/sddm.conf.d/00-runix.conf";
+        environment.XDG_RUNTIME_DIR = "/run/sddm";
         after = [
           "dbus"
           "elogind"
