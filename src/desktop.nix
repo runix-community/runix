@@ -42,7 +42,7 @@ let
   sddmConfig = pkgs.writeText "runix-sddm.conf" ''
     [General]
     DisplayServer=wayland
-    GreeterEnvironment=XDG_RUNTIME_DIR=/run/sddm
+    GreeterEnvironment=XDG_RUNTIME_DIR=/run/sddm,XCURSOR_PATH=/run/current-system/sw/share/icons,XCURSOR_SIZE=24,XCURSOR_THEME=Adwaita
     HaltCommand=/run/current-system/bin/poweroff
     RebootCommand=/run/current-system/bin/reboot
 
@@ -178,6 +178,7 @@ in
     hardware.input.enable = lib.mkDefault true;
     runix.packages = [
       cfg.sddm.package
+      pkgs.adwaita-icon-theme
       pkgs.dbus
       desktopPackages.weston
       pkgs.xkeyboard_config
