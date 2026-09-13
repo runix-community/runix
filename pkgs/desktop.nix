@@ -20,7 +20,9 @@ let
         patches = (old.patches or [ ]) ++ [ ./pipewire-mdevd.patch ];
       });
 
-  weston = pkgs.weston.override { inherit libinput; };
+  weston = (pkgs.weston.override { inherit libinput; }).overrideAttrs (old: {
+    mesonFlags = (old.mesonFlags or [ ]) ++ [ "-Dsystemd=false" ];
+  });
 in
 {
   inherit libinput pipewire weston;
