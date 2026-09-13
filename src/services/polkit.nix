@@ -17,8 +17,8 @@
         message = "runix.systemServices.polkit requires runix.systemServices.elogind";
       }
     ];
-    runix.groups.polkitd.gid = 27;
-    runix.users.polkitd = {
+    runix.groups.polkituser.gid = 27;
+    runix.users.polkituser = {
       uid = 27;
       gid = 27;
       home = "/var/lib/polkit-1";

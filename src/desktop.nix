@@ -54,7 +54,7 @@ let
 
     [Wayland]
     SessionDir=${sessionPackage}/share/wayland-sessions
-    CompositorCommand=${pkgs.weston}/bin/weston --shell=kiosk
+    CompositorCommand=${desktopPackages.weston}/bin/weston --shell=kiosk
   '';
 
   pamLogin = pkgs.writeText "runix-pam-login" ''
@@ -164,6 +164,11 @@ in
         gid = 175;
         home = "/var/lib/sddm";
         shell = "/bin/false";
+        extraGroups = [
+          "video"
+          "input"
+          "render"
+        ];
       };
     };
 
@@ -172,7 +177,7 @@ in
     runix.packages = [
       cfg.sddm.package
       pkgs.dbus
-      pkgs.weston
+      desktopPackages.weston
       pkgs.xkeyboard_config
       sessionPackage
     ]
@@ -211,12 +216,17 @@ in
         command = "${cfg.sddm.package}/bin/sddm --config /etc/sddm.conf.d/00-runix.conf";
         after = [
           "dbus"
-          "elogind"
-          "polkit"
           "seatd"
           "mdevd-coldplug"
         ];
+        check = ''
+          for socket in /tmp/sddm-*; do
+            [ -S "$socket" ] && exit 0
+          done
+          exit 1
+        '';
       };
+      elogind.after = [ "sddm" ];
     };
   };
 }

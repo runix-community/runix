@@ -19,9 +19,11 @@ let
       (old: {
         patches = (old.patches or [ ]) ++ [ ./pipewire-mdevd.patch ];
       });
+
+  weston = pkgs.weston.override { inherit libinput; };
 in
 {
-  inherit libinput pipewire;
+  inherit libinput pipewire weston;
 
   wireplumber = pkgs.wireplumber.override { inherit pipewire; };
 
