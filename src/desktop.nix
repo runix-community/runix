@@ -55,7 +55,7 @@ let
 
     [Wayland]
     SessionDir=${sessionPackage}/share/wayland-sessions
-    CompositorCommand=${desktopPackages.weston}/bin/weston --shell=kiosk
+    CompositorCommand=${pkgs.coreutils}/bin/env XDG_RUNTIME_DIR=/run/sddm ${desktopPackages.weston}/bin/weston --shell=kiosk
   '';
 
   pamLogin = pkgs.writeText "runix-pam-login" ''
@@ -196,6 +196,7 @@ in
     runix.preparationScripts = [
       ''
         mkdir -p /etc/pam.d /etc/sddm.conf.d /var/lib/flatpak /var/lib/sddm
+        ${pkgs.coreutils}/bin/install -d -m 0700 -o sddm -g sddm /run/sddm
         ln -sfn ${pamLogin} /etc/pam.d/login
         ln -sfn ${pamLogin} /etc/pam.d/sddm
         ln -sfn ${pamGreeter} /etc/pam.d/sddm-greeter
