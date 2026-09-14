@@ -218,11 +218,12 @@
         {
           system,
           modules ? [ ],
+          specialArgs ? { },
         }:
         let
           pkgs = mkPkgs system;
           evaluated = nixpkgs.lib.evalModules {
-            specialArgs = { inherit pkgs; };
+            specialArgs = { inherit pkgs; } // specialArgs;
             modules = [ ./src ] ++ modules;
           };
           failures = builtins.filter (item: !item.assertion) evaluated.config.assertions;
