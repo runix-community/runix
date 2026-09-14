@@ -219,9 +219,9 @@
           system,
           modules ? [ ],
           specialArgs ? { },
+          pkgs ? mkPkgs system,
         }:
         let
-          pkgs = mkPkgs system;
           evaluated = nixpkgs.lib.evalModules {
             specialArgs = { inherit pkgs; } // specialArgs;
             modules = [ ./src ] ++ modules;
