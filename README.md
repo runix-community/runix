@@ -31,6 +31,29 @@ Then allow the flake-provided cache configuration when building:
 nix build --accept-flake-config .#vm
 ```
 
+## Package channel
+
+Runix includes [runixpkgs](https://github.com/runix-community/runixpkgs) by
+default. Its packages are available as `pkgs.zwwm`, `pkgs.shojiwm` and
+`pkgs.driftwm` in `runix.lib.runixSystem` modules. Add the window managers you
+want to the system environment:
+
+```nix
+runix.lib.runixSystem {
+  system = "x86_64-linux";
+  modules = [
+    ({ pkgs, ... }: {
+      runix.packages = [ pkgs.zwwm pkgs.driftwm ];
+    })
+  ];
+}
+```
+
+The same packages are available as `runix.packages.${system}.{zwwm,shojiwm,driftwm}`.
+For a custom nixpkgs instance, use `runix.overlays.default`; the preconfigured
+package set is also available through `runix.lib.mkPkgs system`. Upstream
+sources and Nixpkgs revisions are pinned in the flake lock.
+
 ## Networking
 
 `dhcpcd` is currently the recommended network configuration service:

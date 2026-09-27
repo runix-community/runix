@@ -2,9 +2,13 @@
   description = "Runix, a runit-powered operating system built with Nix";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs.runixpkgs = {
+    url = "github:runix-community/runixpkgs";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
 
   outputs =
-    { self, nixpkgs }:
+    { self, nixpkgs, runixpkgs }:
     let
       systems = [
         "aarch64-linux"
@@ -15,9 +19,12 @@
         system:
         import nixpkgs {
           inherit system;
+          overlays = [ runixpkgs.overlays.default ];
         };
     in
     {
+      overlays.default = runixpkgs.overlays.default;
+
       packages = forAllSystems (
         system:
         let
@@ -30,6 +37,7 @@
            bspwm = pkgs.bspwm;
            inherit (fetchPackages) fastfetch fastfetch-unwrapped pfetch;
            inherit (desktopPackages) hyprland labwc niri;
+           inherit (pkgs) zwwm shojiwm driftwm;
           qtile = pkgs.python3Packages.qtile;
           sxhkd = pkgs.sxhkd;
           consoleSource = pkgs.writeText "runix-console.c" ''
@@ -100,6 +108,7 @@
           default = runit;
           inherit
              bspwm
+             driftwm
              fastfetch
              fastfetch-unwrapped
              hyprland
@@ -110,7 +119,9 @@
             runit
             runix
             runix-install
-            sxhkd
+             sxhkd
+             shojiwm
+             zwwm
             ;
         }
         // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
@@ -214,6 +225,8 @@
 
       nixosModules.default = ./src;
 
+      lib.mkPkgs = mkPkgs;
+
       lib.runixSystem =
         {
           system,
@@ -223,7 +236,7 @@
         }:
         let
           evaluated = nixpkgs.lib.evalModules {
-            specialArgs = { inherit pkgs; } // specialArgs;
+            specialArgs = { inherit pkgs runixpkgs; } // specialArgs;
             modules = [ ./src ] ++ modules;
           };
           failures = builtins.filter (item: !item.assertion) evaluated.config.assertions;

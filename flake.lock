@@ -1,5 +1,22 @@
 {
   "nodes": {
+    "driftwm": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790010713,
+        "narHash": "sha256-6tcKQSa7yJrCvS1Tv4oEtbyLwQSeedbLRosWyUTkbro=",
+        "owner": "malbiruk",
+        "repo": "driftwm",
+        "rev": "352333a8fa1b22171492d4b71a54102045c9a19d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "malbiruk",
+        "repo": "driftwm",
+        "rev": "352333a8fa1b22171492d4b71a54102045c9a19d",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1788179007,
@@ -18,7 +35,65 @@
     },
     "root": {
       "inputs": {
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "runixpkgs": "runixpkgs"
+      }
+    },
+    "runixpkgs": {
+      "inputs": {
+        "driftwm": "driftwm",
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "shojiwm": "shojiwm",
+        "zwwm": "zwwm"
+      },
+      "locked": {
+        "lastModified": 1790507369,
+        "narHash": "sha256-G2kzUrZIjabus8Mjat6erkek1OclSsqeCLkMY3wsvos=",
+        "owner": "runix-community",
+        "repo": "runixpkgs",
+        "rev": "daa966570c82195092a5b433ca1c37c4c406da45",
+        "type": "github"
+      },
+      "original": {
+        "owner": "runix-community",
+        "repo": "runixpkgs",
+        "type": "github"
+      }
+    },
+    "shojiwm": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790414601,
+        "narHash": "sha256-ZCfDAjeGTtBXcjPkShGxlR3pknCodQbYbc3RpWIbqa8=",
+        "owner": "bea4dev",
+        "repo": "ShojiWM",
+        "rev": "3fef0c862caab18332947f5e4ede83ff446312a7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "bea4dev",
+        "repo": "ShojiWM",
+        "rev": "3fef0c862caab18332947f5e4ede83ff446312a7",
+        "type": "github"
+      }
+    },
+    "zwwm": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790505034,
+        "narHash": "sha256-OviZ6j31SwmGrJLU2DRgKahUZ858jZSzJFou6Pv72LA=",
+        "owner": "binarylinuxx",
+        "repo": "zwwm",
+        "rev": "39c11384498a207899efdf45a7848becc59ea861",
+        "type": "github"
+      },
+      "original": {
+        "owner": "binarylinuxx",
+        "repo": "zwwm",
+        "rev": "39c11384498a207899efdf45a7848becc59ea861",
+        "type": "github"
       }
     }
   },
