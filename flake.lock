@@ -49,11 +49,11 @@
         "zwwm": "zwwm"
       },
       "locked": {
-        "lastModified": 1790615406,
-        "narHash": "sha256-hFnd1Bllu2l99armqS71YRb+OZv7ByUycQu/NvyWCW8=",
+        "lastModified": 1790616996,
+        "narHash": "sha256-6rAyEeSmRNAOZdHzFp+DbgeniYypi5LwrQCycIE+1c8=",
         "owner": "runix-community",
         "repo": "runixpkgs",
-        "rev": "42fdb691d3abcf4e3f653f31be5be9303763314a",
+        "rev": "cc50f2dd88748c6a51d06a04a0df6b9ea83db22a",
         "type": "github"
       },
       "original": {
@@ -82,17 +82,17 @@
     "zwwm": {
       "flake": false,
       "locked": {
-        "lastModified": 1790540194,
-        "narHash": "sha256-l0ZSfqAoH8RVjBi5rUpU58c9Teh3D2pK0YRfZTFVEtU=",
+        "lastModified": 1790616671,
+        "narHash": "sha256-b+9m7wxbzmvMaoKZ2c0IPd52SFrQjvmC5cxmgc4GMgw=",
         "owner": "binarylinuxx",
         "repo": "zwwm",
-        "rev": "3f50507155fabe7701c651eec31db499d694cdff",
+        "rev": "9dc49d2b726e3bcb37620d1e3b97ed44dd871599",
         "type": "github"
       },
       "original": {
         "owner": "binarylinuxx",
         "repo": "zwwm",
-        "rev": "3f50507155fabe7701c651eec31db499d694cdff",
+        "rev": "9dc49d2b726e3bcb37620d1e3b97ed44dd871599",
         "type": "github"
       }
     }
