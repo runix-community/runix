@@ -40,6 +40,19 @@ let
     EOF
   '';
 
+  waylandSessions = pkgs.buildEnv {
+    name = "runix-wayland-sessions";
+    paths = lib.optional programs.hyprland.enable sessionPackage
+      ++ lib.concatMap (name: lib.optional programs.${name}.enable programs.${name}.package) [
+        "labwc"
+        "niri"
+        "zwwm"
+        "shojiwm"
+        "driftwm"
+      ];
+    pathsToLink = [ "/share/wayland-sessions" ];
+  };
+
   sddmConfig = pkgs.writeText "runix-sddm.conf" ''
     [General]
     DisplayServer=wayland
@@ -57,7 +70,7 @@ let
     HideShells=/bin/false
 
     [Wayland]
-    SessionDir=${sessionPackage}/share/wayland-sessions
+    SessionDir=${waylandSessions}/share/wayland-sessions
     CompositorCommand=${pkgs.coreutils}/bin/env XDG_RUNTIME_DIR=/run/sddm ${desktopPackages.weston}/bin/weston --shell=kiosk
   '';
 
@@ -77,15 +90,14 @@ let
     session required ${pam}/lib/security/pam_permit.so
   '';
 
-  portalPackages = [
-    cfg.portals.hyprlandPackage
+  portalPackages = lib.optional programs.hyprland.enable cfg.portals.hyprlandPackage ++ [
     cfg.portals.gtkPackage
     pkgs.xdg-desktop-portal
   ];
 in
 {
   options.runix.desktop = {
-    enable = lib.mkEnableOption "the Runix Hyprland desktop stack";
+    enable = lib.mkEnableOption "the Runix Wayland desktop stack";
 
     sddm = {
       package = lib.mkOption {
@@ -104,7 +116,7 @@ in
       enable = lib.mkOption {
         type = lib.types.bool;
         default = true;
-        description = "Whether to install Hyprland and GTK desktop portals.";
+        description = "Whether to install desktop portals for enabled Wayland sessions.";
       };
       hyprlandPackage = lib.mkOption {
         type = lib.types.package;
@@ -139,8 +151,15 @@ in
         message = "runix.desktop requires runix.systemServices.elogind";
       }
       {
-        assertion = programs.hyprland.enable;
-        message = "runix.desktop requires programs.hyprland";
+        assertion = lib.any (name: programs.${name}.enable) [
+          "hyprland"
+          "labwc"
+          "niri"
+          "zwwm"
+          "shojiwm"
+          "driftwm"
+        ];
+        message = "runix.desktop requires at least one enabled Wayland compositor";
       }
     ];
 
@@ -184,8 +203,8 @@ in
       pkgs.dbus
       desktopPackages.weston
       pkgs.xkeyboard_config
-      sessionPackage
     ]
+    ++ lib.optional programs.hyprland.enable sessionPackage
     ++ lib.optionals cfg.portals.enable portalPackages;
 
     runix.environmentVariables = {

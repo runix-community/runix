@@ -54,6 +54,19 @@ For a custom nixpkgs instance, use `runix.overlays.default`; the preconfigured
 package set is also available through `runix.lib.mkPkgs system`. Upstream
 sources and Nixpkgs revisions are pinned in the flake lock.
 
+Window managers can also be enabled with `programs` options:
+
+```nix
+programs.zwwm.enable = true;
+programs.shojiwm.enable = true;
+programs.driftwm.enable = true;
+```
+
+Each has a `package` option, for example
+`programs.zwwm.package = pkgs.zwwm.override { xwaylandSupport = false; };`.
+When `runix.desktop.enable = true`, enabled Wayland sessions appear in SDDM.
+To use only another compositor, set `programs.hyprland.enable = false`.
+
 ## Networking
 
 `dhcpcd` is currently the recommended network configuration service:
