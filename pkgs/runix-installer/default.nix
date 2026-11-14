@@ -9,18 +9,35 @@
   lib,
   makeWrapper,
   mkpasswd,
+  ncurses,
+  pkg-config,
   runix-install,
-  rustPlatform,
+  stdenv,
   tzdata,
   util-linux,
 }:
-rustPlatform.buildRustPackage {
+stdenv.mkDerivation {
   pname = "runix-installer";
-  version = "0.1.0";
-  src = lib.cleanSource ./.;
-  cargoLock.lockFile = ./Cargo.lock;
+  version = "0.2.0";
+  src = lib.fileset.toSource {
+    root = ./.;
+    fileset = lib.fileset.unions [
+      ./Makefile
+      ./src
+      ./tests
+    ];
+  };
 
-  nativeBuildInputs = [ makeWrapper ];
+  nativeBuildInputs = [
+    makeWrapper
+    pkg-config
+  ];
+  buildInputs = [ ncurses ];
+
+  makeFlags = [ "PREFIX=$(out)" ];
+  enableParallelBuilding = true;
+  doCheck = true;
+  checkTarget = "check";
 
   postInstall = ''
     wrapProgram "$out/bin/runix-installer" \

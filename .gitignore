@@ -5,7 +5,9 @@ result-*
 *.nix-db/
 *_grim.png
 
-target/
+pkgs/runix-installer/**/*.o
+pkgs/runix-installer/runix-installer
+pkgs/runix-installer/runix-installer-tests
 
 # Local VM state and source copies
 runix-vm-source/
