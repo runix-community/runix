@@ -11,6 +11,8 @@ new integrations without runtime coverage.
 - `nix build .#vm` followed by `python3 tests/vm-smoke.py ./result` runs the
   x86_64 boot, Nix daemon, repeated-activation, and offline-activation smoke test. It needs KVM and
   uses a temporary disk rather than the default guest image.
+- `cargo test` in `pkgs/runix-installer` covers the installer without root or
+  Nix. `cargo run -- --demo` shows its interface and never touches a disk.
 - Never run activation or installer scripts directly against your development host.
 - Test boot and privileged changes only in a disposable VM with a separate disk.
 

@@ -5,6 +5,8 @@ result-*
 *.nix-db/
 *_grim.png
 
+target/
+
 # Local VM state and source copies
 runix-vm-source/
 vm-source/

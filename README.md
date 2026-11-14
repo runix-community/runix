@@ -31,6 +31,27 @@ Then allow the flake-provided cache configuration when building:
 nix build --accept-flake-config .#vm
 ```
 
+## Installing from an ISO
+
+Build the live ISO on an x86_64 machine with `runixisogen`:
+
+```sh
+nix run --accept-flake-config github:runix-community/runix#runixisogen
+```
+
+Run it inside a Runix checkout to build that checkout, or pass
+`--flake PATH#HOST` to build a host that sets `runix.iso.enable = true`. The
+image boots on BIOS and UEFI machines from a CD or a USB drive.
+
+The installer is a full-screen terminal app built with Rust and ratatui. It
+starts on tty1 at boot, and tty2 has a root shell. Run `runix-installer --demo`
+to try the interface without changing anything. It erases
+the whole selected disk, creates a 1 GiB FAT boot partition with an ext4 or
+Btrfs root, writes a flake to `/etc/runix`, and installs Limine. Installing
+needs internet access because it downloads Runix and its packages. Wired
+networks connect automatically, and the installer can join Wi-Fi through
+`runix-network`. A Wi-Fi network joined there is kept on the installed system.
+
 ## Package channel
 
 Runix includes [runixpkgs](https://github.com/runix-community/runixpkgs) by

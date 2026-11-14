@@ -588,6 +588,7 @@ in
         activation
         etcTree
         serviceTree
+        stage1
         system
         verifyServices
         ;

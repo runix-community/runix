@@ -34,6 +34,8 @@
            runit = pkgs.callPackage ./pkgs/runit { };
           runix = pkgs.callPackage ./pkgs/runix { };
           runix-install = pkgs.callPackage ./pkgs/runix-install { };
+          runix-installer = pkgs.callPackage ./pkgs/runix-installer { inherit runix-install; };
+          runixisogen = pkgs.callPackage ./pkgs/runixisogen { };
            bspwm = pkgs.bspwm;
            inherit (fetchPackages) fastfetch fastfetch-unwrapped pfetch;
            inherit (desktopPackages) hyprland labwc niri;
@@ -103,6 +105,10 @@
               }
             ];
           };
+          live = self.lib.runixSystem {
+            inherit system;
+            modules = [ { runix.iso.enable = true; } ];
+          };
         in
         {
           default = runit;
@@ -119,6 +125,8 @@
             runit
             runix
             runix-install
+            runix-installer
+            runixisogen
              sxhkd
              shojiwm
              zwwm
@@ -126,6 +134,7 @@
         }
         // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
           inherit (vm.config.runix.build) vm;
+          inherit (live.config.runix.build) iso;
         }
       );
 
@@ -194,7 +203,12 @@
                 shellcheck --shell=bash ${./src/activate-etc.sh} ${./tests/activation.sh} ${./tests/services.sh}
                 touch "$out"
               '';
-          inherit (self.packages.${system}) runix runix-install;
+          inherit (self.packages.${system})
+            runix
+            runix-install
+            runix-installer
+            runixisogen
+            ;
         }
         // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
           generated-shell-syntax = pkgs.runCommand "runix-generated-shell-syntax" { } ''

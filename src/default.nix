@@ -18,5 +18,6 @@
     ./desktop.nix
     ./zfs.nix
     ./virtual-machine.nix
+    ./iso.nix
   ];
 }

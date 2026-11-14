@@ -16,7 +16,12 @@ let
     lib.concatMap (
       fileSystem:
       lib.optional (
-        fileSystem.fsType != "" && fileSystem.fsType != "auto" && fileSystem.fsType != "zfs"
+        !(lib.elem fileSystem.fsType [
+          ""
+          "auto"
+          "tmpfs"
+          "zfs"
+        ])
       ) fileSystem.fsType
     ) cfg.build.earlyFileSystems
   );
@@ -117,6 +122,27 @@ let
           /sysroot/nix/var/nix/db
         ${mountEarlyFileSystems}
       ''
+    else if cfg.iso.enable then
+      ''
+        live_device=${lib.escapeShellArg "/dev/disk/by-label/${cfg.iso.volumeId}"}
+        tries=0
+        until [ -e "$live_device" ]; do
+          tries=$((tries + 1))
+          if [ "$tries" -ge ${toString (cfg.initrd.rootTimeout * 10)} ]; then
+            echo "runix: live medium did not appear: $live_device" >/dev/console
+            exit 1
+          fi
+          sleep 0.1
+        done
+        mkdir -p /run/runix-live/iso
+        mount -t iso9660 -o ro "$live_device" /run/runix-live/iso
+        mount -t tmpfs -o mode=0755 tmpfs /sysroot
+        mkdir -p /sysroot/nix/.ro-store /sysroot/nix/.rw-store/upper /sysroot/nix/.rw-store/work /sysroot/nix/store
+        mount -t squashfs -o ro,loop /run/runix-live/iso/runix/nix-store.squashfs /sysroot/nix/.ro-store
+        mount -t overlay overlay \
+          -o lowerdir=/sysroot/nix/.ro-store,upperdir=/sysroot/nix/.rw-store/upper,workdir=/sysroot/nix/.rw-store/work \
+          /sysroot/nix/store
+      ''
     else if cfg.zfs.enable then
       let
         pool = builtins.head (lib.splitString "/" root.device);
@@ -208,6 +234,13 @@ let
     /bin/timeout ${toString cfg.initrd.rootTimeout} /bin/mdevd-coldplug -O 2
     echo "runix: mounting root filesystems" >/dev/console
     ${mountRoot}
+
+    # runit powers off without stage 1, and only activation creates /etc on an
+    # empty root. An installed link dangles here, so -e alone would misread it.
+    if [ ! -e /sysroot/etc/runit/1 ] && [ ! -L /sysroot/etc/runit/1 ]; then
+      mkdir -p /sysroot/etc/runit
+      ln -s ${cfg.build.stage1} /sysroot/etc/runit/1
+    fi
 
     stage2_init=/init
     for option in $(cat /proc/cmdline); do

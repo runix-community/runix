@@ -41,7 +41,7 @@ jobs:
       - name: Build core artifacts
         run: >-
           nix build --print-build-logs
-          .#runit .#runix .#runix-install .#vm
+          .#runit .#runix .#runix-install .#runix-installer .#runixisogen .#vm
 
   desktop:
     name: Desktop ${{ matrix.group }}
