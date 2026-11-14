@@ -54,14 +54,71 @@ let
   '';
   agetty = program: arguments: "${pkgs.util-linux}/bin/agetty --noclear --noissue --skip-login --login-program ${program} ${arguments}";
 
+  # What a console installer can need: Wi-Fi and wired network cards, and the
+  # GPUs whose drivers take over the console. Everything else in
+  # linux-firmware (phone SoCs, data-center NICs, NVIDIA GSP, audio DSPs) is
+  # left out; it is most of the package's 1.8 GiB.
+  installerFirmwarePaths = [
+    # Wi-Fi
+    "intel/iwlwifi"
+    "iwlwifi-*"
+    "ath9k_htc"
+    "ath10k"
+    "ath11k"
+    "ath12k"
+    "ath6k"
+    "ar*.fw"
+    "htc_*.fw"
+    "mediatek"
+    "rtw88"
+    "rtw89"
+    "rtlwifi"
+    "brcm"
+    "cypress"
+    # Wired
+    "rtl_nic"
+    "tigon"
+    "bnx2"
+    # Graphics
+    "amdgpu"
+    "i915"
+    "xe"
+    "radeon"
+  ];
+  installerFirmware =
+    pkgs.runCommand "runix-installer-firmware" { } ''
+      mkdir -p "$out/lib/firmware"
+      cd ${pkgs.linux-firmware}/lib/firmware
+      shopt -s nullglob
+      for path in ${lib.concatStringsSep " " installerFirmwarePaths}; do
+        # Names missing from this linux-firmware release are skipped.
+        [ -e "$path" ] || [ -L "$path" ] || continue
+        cp -a --parents "$path" "$out/lib/firmware/"
+      done
+    '';
+  firmwarePackages = {
+    none = [ ];
+    installer = [
+      installerFirmware
+      # Wi-Fi channel and power rules; not part of linux-firmware.
+      pkgs.wireless-regdb
+    ];
+    full = [ pkgs.linux-firmware ];
+  };
+
   closure = pkgs.closureInfo { rootPaths = [ cfg.build.system ]; };
+  compressionArguments =
+    if iso.compression == "xz" then
+      "-comp xz -Xbcj x86 -Xdict-size 100%"
+    else
+      "-comp zstd -Xcompression-level ${toString iso.compressionLevel}";
   store =
     pkgs.runCommand "runix-live-store.squashfs" { nativeBuildInputs = [ pkgs.squashfsTools ]; }
       ''
         cp ${closure}/registration nix-path-registration
         mksquashfs nix-path-registration $(cat ${closure}/store-paths) "$out" \
           -no-hardlinks -keep-as-directory -all-root -root-mode 0755 \
-          -b 1048576 -comp zstd -Xcompression-level ${toString iso.compressionLevel} \
+          -b 1048576 ${compressionArguments} \
           -processors "$NIX_BUILD_CORES"
       '';
 
@@ -131,15 +188,35 @@ in
       default = 5;
       description = "Seconds before the default boot entry is selected.";
     };
+    compression = lib.mkOption {
+      type = lib.types.enum [
+        "xz"
+        "zstd"
+      ];
+      default = "xz";
+      description = ''
+        Compression of the live Nix store. xz makes the smallest image; zstd
+        unpacks faster, so the live system starts programs a little sooner.
+      '';
+    };
     compressionLevel = lib.mkOption {
       type = lib.types.ints.between 1 22;
-      default = 15;
-      description = "Zstandard compression level for the live Nix store.";
+      default = 19;
+      description = "Zstandard compression level, when `compression` is zstd.";
     };
     firmware = lib.mkOption {
-      type = lib.types.bool;
-      default = true;
-      description = "Whether to include redistributable firmware, which most Wi-Fi hardware needs.";
+      type = lib.types.enum [
+        "installer"
+        "full"
+        "none"
+      ];
+      default = "installer";
+      description = ''
+        Firmware in the image. `installer` covers Wi-Fi and wired network
+        cards and AMD and Intel graphics; `full` is all of linux-firmware,
+        about 1.8 GiB before compression. The installed system chooses its own
+        firmware either way.
+      '';
     };
     installerFlake = lib.mkOption {
       type = lib.types.str;
@@ -190,8 +267,21 @@ in
       "console=ttyS0,115200n8"
       "console=tty0"
       "loglevel=3"
-    ];
-    hardware.enableRedistributableFirmware = lib.mkDefault iso.firmware;
+    ]
+    # Without its GSP firmware, nouveau takes the console over and then fails,
+    # leaving a black screen. The firmware's text console works on NVIDIA.
+    ++ lib.optional (iso.firmware != "full") "nouveau.modeset=0";
+    runix.kernel.firmwarePackages = lib.mkForce firmwarePackages.${iso.firmware};
+
+    # The installer only needs the default locale, not all 200 MiB of them.
+    i18n.glibcLocales = lib.mkDefault (
+      pkgs.glibcLocales.override {
+        allLocales = false;
+        locales = [ "${config.i18n.defaultLocale}/UTF-8" ];
+      }
+    );
+    # Installs use flakes, so the bundled nixpkgs source is dead weight.
+    runix.nixPath = lib.mkDefault [ ];
 
     runix.systemServices.wifi.enable = true;
     runix.packages = [
