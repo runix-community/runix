@@ -7,6 +7,7 @@
   flakeUrl ? "github:runix-community/runix",
   gptfdisk,
   lib,
+  logPasteUrl ? "https://paste.rs/",
   makeWrapper,
   mkpasswd,
   ncurses,
@@ -55,7 +56,8 @@ stdenv.mkDerivation {
         ]
       } \
       --set RUNIX_ZONEINFO ${tzdata}/share/zoneinfo \
-      --set-default RUNIX_INSTALL_FLAKE ${lib.escapeShellArg flakeUrl}
+      --set-default RUNIX_INSTALL_FLAKE ${lib.escapeShellArg flakeUrl} \
+      --set-default RUNIX_LOG_PASTE_URL ${lib.escapeShellArg logPasteUrl}
   '';
 
   meta = {

@@ -55,6 +55,9 @@ needs internet access because it downloads Runix and its packages. Wired
 networks connect automatically, and the installer can join Wi-Fi through
 `runix-network`. A Wi-Fi network joined there is kept on the installed system.
 When it finishes, it can open a shell inside the installed system.
+If an installation fails, it offers to upload the log, with host and user
+names replaced, so it can be linked from a GitHub issue. Uploads go to
+paste.rs unless `runix.iso.logPasteUrl` names another service.
 
 ## Package channel
 
