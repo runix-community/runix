@@ -30,6 +30,7 @@ let
   installer = pkgs.callPackage ../pkgs/runix-installer {
     runix-install = pkgs.callPackage ../pkgs/runix-install { };
     flakeUrl = iso.installerFlake;
+    logPasteUrl = iso.logPasteUrl;
   };
 
   session = pkgs.writeShellScript "runix-live-session" ''
@@ -144,6 +145,16 @@ in
       type = lib.types.str;
       default = "github:runix-community/runix";
       description = "Flake reference used as the runix input of installed systems.";
+    };
+    logPasteUrl = lib.mkOption {
+      type = lib.types.str;
+      default = "https://paste.rs/";
+      example = "https://paste.example.org/";
+      description = ''
+        Where the installer uploads the log of a failed installation, only
+        after the user confirms. The service must accept the log as a raw POST
+        body and answer with the paste's URL.
+      '';
     };
     liminePackage = lib.mkOption {
       type = lib.types.package;
