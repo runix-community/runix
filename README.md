@@ -41,7 +41,11 @@ nix run --accept-flake-config github:runix-community/runix#runixisogen
 
 Run it inside a Runix checkout to build that checkout, or pass
 `--flake PATH#HOST` to build a host that sets `runix.iso.enable = true`. The
-image boots on BIOS and UEFI machines from a CD or a USB drive.
+image boots on BIOS and UEFI machines from a CD or a USB drive. It is about
+500 MB: it carries firmware for Wi-Fi and wired network cards and for AMD and
+Intel graphics, one locale, and an xz-compressed store. Set
+`runix.iso.firmware = "full"` for all of linux-firmware, or
+`runix.iso.compression = "zstd"` for a larger image that starts programs faster.
 
 The installer is a full-screen ncurses app written in C++. It starts on tty1
 at boot, and tty2 has a root shell. Run `runix-installer --demo` to try the

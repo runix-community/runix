@@ -1,13 +1,31 @@
-{ lib, pkgs, ... }:
 {
-  runix.packages = [
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+let
+  nixPath = lib.concatStringsSep ":" config.runix.nixPath;
+in
+{
+  options.runix.nixPath = lib.mkOption {
+    type = lib.types.listOf lib.types.str;
+    default = [ "nixpkgs=${pkgs.path}" ];
+    defaultText = lib.literalExpression ''[ "nixpkgs=''${pkgs.path}" ]'';
+    description = ''
+      Entries for NIX_PATH and the nix-path setting. The default keeps the
+      system's nixpkgs source, about 190 MiB, so `<nixpkgs>` works offline.
+    '';
+  };
+
+  config.runix.packages = [
     (pkgs.callPackage ../pkgs/runix { })
     (pkgs.callPackage ../pkgs/runix-install { })
     pkgs.nix
     pkgs.cacert
   ];
-  runix.groups.nixbld.gid = 30000;
-  runix.users = builtins.listToAttrs (
+  config.runix.groups.nixbld.gid = 30000;
+  config.runix.users = builtins.listToAttrs (
     lib.genList (index: {
       name = "nixbld${toString (index + 1)}";
       value = {
@@ -19,11 +37,11 @@
       };
     }) 16
   );
-  runix.environmentVariables = {
+  config.runix.environmentVariables = {
     NIX_SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
-    NIX_PATH = "nixpkgs=${pkgs.path}";
-  };
-  runix.preparationScripts = [
+  }
+  // lib.optionalAttrs (nixPath != "") { NIX_PATH = nixPath; };
+  config.runix.preparationScripts = [
     ''
       mkdir -p /etc/nix /etc/ssl/certs /nix/var/nix/daemon-socket /nix/var/nix/profiles/per-user/root
       ln -sfn ${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt /etc/ssl/certs/ca-certificates.crt
@@ -33,11 +51,11 @@
         trusted-users = root
         allowed-users = *
         sandbox = true
-        nix-path = nixpkgs=${pkgs.path}
+        nix-path = ${nixPath}
       ''} /etc/nix/nix.conf
     ''
   ];
-  runix.services.nix-daemon = {
+  config.runix.services.nix-daemon = {
     command = "${pkgs.nix}/bin/nix-daemon";
     check = "test -S /nix/var/nix/daemon-socket/socket";
   };
