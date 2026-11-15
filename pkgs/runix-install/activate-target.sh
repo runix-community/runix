@@ -28,4 +28,9 @@ ln -s /proc/self/fd/2 "$root/dev/stderr"
 mkdir -p "$root/proc"
 mount -t proc -o ro,nosuid,nodev,noexec proc "$root/proc"
 mounted+=("$root/proc")
-chroot "$root" "$system/activate" --offline
+# A private /tmp, and TMPDIR pointing at it: the caller's TMPDIR, such as
+# /mnt/var/tmp, names a path outside the chroot that does not exist inside it.
+mkdir -p "$root/tmp"
+mount -t tmpfs -o mode=1777,nosuid,nodev tmpfs "$root/tmp"
+mounted+=("$root/tmp")
+TMPDIR=/tmp chroot "$root" "$system/activate" --offline
