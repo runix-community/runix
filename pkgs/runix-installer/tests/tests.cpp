@@ -762,6 +762,7 @@ TEST(bricks_serves_breaks_and_loses_lives) {
 
 TEST(fetch_catches_misses_and_dodges) {
     games::Fetch fetch(40, 10, 3);
+    fetch.stop_spawning();
     int centre = fetch.basket_x() + fetch.basket_width() / 2;
     fetch.drop("glibc", false, centre - 3);
     for (int i = 0; i < 400 && !fetch.items().empty(); ++i) fetch.update(0.01);

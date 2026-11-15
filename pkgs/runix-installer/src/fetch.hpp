@@ -40,6 +40,8 @@ public:
     std::size_t queued() const { return queue_.size(); }
     /// Drops a package at column x.
     void drop(const std::string& name, bool broken, double x);
+    /// Stops the random drops, so only drop() adds packages.
+    void stop_spawning() { spawn_timer_ = 1e9; }
 
 private:
     int columns_;
