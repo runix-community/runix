@@ -302,6 +302,18 @@ std::string hardware(const Settings& settings) {
     std::string graphics;
     if (settings.amd_gpu) graphics += "  hardware.amdgpu.enable = true;\n";
     if (settings.intel_gpu) graphics += "  hardware.intelGraphics.enable = true;\n";
+    if (settings.bluetooth || settings.battery) {
+        graphics += "\n  # Found on this machine:";
+        if (settings.bluetooth) graphics += " Bluetooth";
+        if (settings.bluetooth && settings.battery) graphics += " and";
+        if (settings.battery) graphics += " a battery";
+        graphics += ".\n  runix.systemServices.dbus.enable = true;\n";
+    }
+    if (settings.bluetooth) graphics += "  hardware.bluetooth.enable = true;\n";
+    if (settings.battery) {
+        graphics += "  runix.systemServices.upower.enable = true;\n"
+                    "  runix.systemServices.powerProfiles.enable = true;\n";
+    }
 
     std::string header = "{\n";
     std::string nvidia;

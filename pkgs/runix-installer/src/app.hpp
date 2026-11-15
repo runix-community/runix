@@ -199,6 +199,7 @@ public:
     config::BootMode boot_mode = config::BootMode::Efi;
     /// Graphics found on this machine; NVIDIA gets the proprietary driver.
     system_probe::Gpus gpus;
+    system_probe::Devices devices;
     std::optional<std::uint32_t> nvidia_device;
 
     std::size_t phase = 0;

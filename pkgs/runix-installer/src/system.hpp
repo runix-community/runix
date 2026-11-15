@@ -79,6 +79,14 @@ Gpus gpus(bool demo);
 /// Walks /sys/block/<name>/device up through `sys` and keeps drivers that are
 /// loadable modules, per `sys`/module/<module>/initstate.
 std::vector<std::string> disk_modules(const std::string& sys, const std::string& disk);
+
+/// Bluetooth and a battery, from `sys` (normally /sys).
+struct Devices {
+    bool bluetooth = false;
+    bool battery = false;
+};
+Devices find_devices(const std::string& sys);
+Devices devices(bool demo);
 config::Cpu cpu_vendor();
 
 }  // namespace system_probe

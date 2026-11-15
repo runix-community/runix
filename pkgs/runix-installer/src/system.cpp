@@ -259,6 +259,25 @@ std::vector<std::string> disk_modules(const std::string& sys, const std::string&
     return modules;
 }
 
+Devices find_devices(const std::string& sys) {
+    Devices found;
+    std::error_code error;
+    for (const auto& entry : fs::directory_iterator(fs::path(sys) / "class" / "bluetooth", error)) {
+        if (entry.path().filename().string().rfind("hci", 0) == 0) found.bluetooth = true;
+    }
+    for (const auto& entry : fs::directory_iterator(fs::path(sys) / "class" / "power_supply", error)) {
+        if (read_word(entry.path() / "type") == "Battery" && read_word(entry.path() / "scope") != "Device") {
+            found.battery = true;
+        }
+    }
+    return found;
+}
+
+Devices devices(bool demo) {
+    if (demo) return {};
+    return find_devices("/sys");
+}
+
 std::optional<std::uint32_t> nvidia_gpu(bool demo) {
     if (demo) return std::nullopt;
     return find_nvidia("/sys/bus/pci/devices");

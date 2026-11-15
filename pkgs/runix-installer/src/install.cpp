@@ -297,6 +297,8 @@ void install(const Plan& plan, Runner& runner) {
     settings.nvidia_device = plan.nvidia_device;
     settings.amd_gpu = plan.amd_gpu;
     settings.intel_gpu = plan.intel_gpu;
+    settings.bluetooth = plan.bluetooth;
+    settings.battery = plan.battery;
     settings.disk_modules = plan.disk_modules;
     if (!plan.disk_modules.empty()) {
         std::string found;

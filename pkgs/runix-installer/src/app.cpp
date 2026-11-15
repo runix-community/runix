@@ -95,6 +95,7 @@ App::App(Options options_, std::shared_ptr<Queue> queue)
     wireless = system_probe::wireless_available(options.demo);
     boot_mode = options.demo ? config::BootMode::Efi : system_probe::boot_mode();
     gpus = system_probe::gpus(options.demo);
+    devices = system_probe::devices(options.demo);
     nvidia_device = gpus.nvidia;
 }
 
@@ -171,6 +172,8 @@ std::vector<std::pair<std::string, std::string>> App::summary() const {
         {"Filesystem", config::name(filesystem())},
         {"Boot mode", config::name(boot_mode)},
         {"Graphics", graphics_summary()},
+        {"Hardware", std::string(devices.battery ? "laptop (battery)" : "desktop") +
+                         (devices.bluetooth ? ", Bluetooth" : "")},
         {"Host name", host.value},
         {"User", user.value},
         {"Time zone", timezone()},
@@ -451,6 +454,8 @@ void App::start_install() {
     plan.nvidia_device = nvidia_device;
     plan.amd_gpu = gpus.amd;
     plan.intel_gpu = gpus.intel;
+    plan.bluetooth = devices.bluetooth;
+    plan.battery = devices.battery;
     if (!options.demo) plan.disk_modules = system_probe::disk_modules("/sys", plan.disk);
     log.clear();
     scroll = 0;

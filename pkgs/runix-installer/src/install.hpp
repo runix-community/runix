@@ -75,6 +75,8 @@ struct Plan {
     std::optional<std::uint32_t> nvidia_device;
     bool amd_gpu = false;
     bool intel_gpu = false;
+    bool bluetooth = false;
+    bool battery = false;
     std::vector<std::string> disk_modules;
 };
 

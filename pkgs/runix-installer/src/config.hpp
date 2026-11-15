@@ -92,6 +92,9 @@ struct Settings {
     std::optional<std::uint32_t> nvidia_device;
     bool amd_gpu = false;
     bool intel_gpu = false;
+    bool bluetooth = false;
+    /// A laptop: battery state and power profiles.
+    bool battery = false;
     /// Modules the root disk needs to be found at boot, from the hardware.
     std::vector<std::string> disk_modules;
     /// Eight hex digits; the pool is created under this host ID, so the
