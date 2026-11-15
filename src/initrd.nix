@@ -138,7 +138,20 @@ let
         mount -t iso9660 -o ro "$live_device" /run/runix-live/iso
         mount -t tmpfs -o mode=0755 tmpfs /sysroot
         mkdir -p /sysroot/nix/.ro-store /sysroot/nix/.rw-store/upper /sysroot/nix/.rw-store/work /sysroot/nix/store
-        mount -t squashfs -o ro,loop /run/runix-live/iso/runix/nix-store.squashfs /sysroot/nix/.ro-store
+        store_image=/run/runix-live/iso/runix/nix-store.squashfs
+        if grep -qw runix.toram /proc/cmdline; then
+          # Copy the store into RAM and let go of the medium, so it can be
+          # removed once the system is up.
+          echo "runix: copying the live system to RAM" >/dev/console
+          mkdir -p /run/runix-live/ram
+          mount -t tmpfs -o size=100%,mode=0755 tmpfs /run/runix-live/ram
+          cp "$store_image" /run/runix-live/ram/nix-store.squashfs
+          store_image=/run/runix-live/ram/nix-store.squashfs
+        fi
+        mount -t squashfs -o ro,loop "$store_image" /sysroot/nix/.ro-store
+        if grep -qw runix.toram /proc/cmdline; then
+          umount /run/runix-live/iso || true
+        fi
         mount -t overlay overlay \
           -o lowerdir=/sysroot/nix/.ro-store,upperdir=/sysroot/nix/.rw-store/upper,workdir=/sysroot/nix/.rw-store/work \
           /sysroot/nix/store

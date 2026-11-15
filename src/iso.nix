@@ -132,6 +132,7 @@ let
 
     ${bootEntry "Runix Installer" [ ]}
     ${bootEntry "Runix Installer (safe graphics)" [ "nomodeset" ]}
+    ${bootEntry "Runix Installer (copy to RAM, remove the USB after boot)" [ "runix.toram" ]}
   '';
 
   image =
