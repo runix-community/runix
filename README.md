@@ -50,7 +50,7 @@ Intel graphics, one locale, and an xz-compressed store. Set
 The installer is a full-screen ncurses app written in C++. It starts on tty1
 at boot, and tty2 has a root shell. Run `runix-installer --demo` to try the
 interface without changing anything. It can erase the whole selected disk
-(a 1 GiB FAT boot partition with an ext4 or Btrfs root), or install to
+(a 1 GiB FAT boot partition with an ext4, Btrfs or ZFS root), or install to
 partitions you pick or create in `cfdisk`, keeping an existing EFI system
 partition. It writes a flake to `/etc/runix` and installs Limine or GRUB. While
 installing, it reads Nix's `--log-format internal-json` output to show how many

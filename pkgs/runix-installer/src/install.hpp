@@ -47,8 +47,12 @@ std::string partition_path(const std::string& disk, unsigned number);
 Commands partition_commands(const DiskLayout& layout, const std::string& disk);
 /// The boot and root partitions a layout installs to.
 std::pair<std::string, std::string> targets(const DiskLayout& layout, const std::string& disk);
+/// For ZFS, `zfs_host_id` is the installed system's host ID, set before the
+/// pool is created.
 Commands format_commands(const DiskLayout& layout, config::Filesystem root_fs, const std::string& boot,
-                         const std::string& root);
+                         const std::string& root, const std::string& zfs_host_id = "");
+/// How to mount the new root at the target.
+std::vector<std::string> mount_root_command(config::Filesystem root_fs, const std::string& root);
 /// The arguments for runix-install, asking Nix for its machine-readable log.
 std::vector<std::string> install_arguments(const std::string& flake_reference);
 
@@ -65,12 +69,16 @@ struct Plan {
     config::Filesystem root_fs = config::Filesystem::Ext4;
     config::BootMode boot_mode = config::BootMode::Efi;
     config::BootLoader loader = config::BootLoader::Limine;
+    config::Kernel kernel = config::Kernel::Default;
     std::string disk;
+    std::string zfs_host_id;
 };
 
 /// What Nix reports while the system is installed.
 struct NixStatus {
     std::optional<double> fraction;
+    /// Packages built or fetched so far.
+    std::uint64_t completed = 0;
     std::string summary;
     std::string current;
     bool operator==(const NixStatus&) const = default;

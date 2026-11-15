@@ -284,6 +284,11 @@ in
       pkgs.gptfdisk
       pkgs.pciutils
       pkgs.usbutils
+      pkgs.zfs
+    ];
+    # The installer can create a ZFS root pool; the module only loads when it does.
+    runix.kernel.modulePackages = [
+      cfg.kernel.packageSet.${pkgs.zfs.kernelModuleAttribute}
     ];
 
     # The registration sits in the squashfs because it cannot reference itself.

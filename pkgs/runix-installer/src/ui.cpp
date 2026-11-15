@@ -6,6 +6,7 @@
 #include <ncurses.h>
 
 #include "app.hpp"
+#include "games.hpp"
 #include "install.hpp"
 #include "report.hpp"
 #include "util.hpp"
@@ -215,6 +216,7 @@ std::string subtitle(const App& app) {
             return app.boot_mode == config::BootMode::Efi
                        ? "This machine boots with UEFI. Both loaders list every Runix generation."
                        : "This machine boots with legacy BIOS. Both loaders list every Runix generation.";
+        case Screen::Kernel: return "CachyOS kernels come from a separate binary cache, added for you.";
         case Screen::Partitioning: return "Let the installer partition the disk, or pick partitions yourself.";
         case Screen::Partitions: return "Mark a boot and a root partition. Others are left alone.";
         case Screen::Filesystem: return "Choose a filesystem for the root partition.";
@@ -598,17 +600,26 @@ void draw_bootloader(App& app, Rect area) {
     choice_list(area, items, app.bootloader_list);
 }
 
+void draw_kernel(App& app, Rect area) {
+    std::vector<Line> items;
+    for (auto kernel : config::kernels) items.push_back(entry(config::name(kernel), config::description(kernel), 16));
+    choice_list(area, items, app.kernel_list);
+}
+
 void draw_filesystem(App& app, Rect area) {
     std::vector<Line> items;
     for (auto filesystem : config::filesystems) {
         items.push_back(entry(config::name(filesystem), config::description(filesystem), 10));
     }
-    choice_list(area, items, app.filesystem_list);
+    Rect list = take_rows(area, static_cast<int>(items.size()));
+    choice_list(list, items, app.filesystem_list);
+    take_rows(area, 1);
+    if (app.filesystem_error) draw_lines(area, wrapped(*app.filesystem_error, fg(Color::Error), area.w));
 }
 
 void draw_desktop(App& app, Rect area) {
     std::vector<Line> items;
-    for (auto desktop : config::desktops) items.push_back({plain(config::name(desktop))});
+    for (auto desktop : config::desktops) items.push_back(entry(config::name(desktop), config::description(desktop), 22));
     choice_list(area, items, app.desktop_list);
 }
 
@@ -736,7 +747,101 @@ void draw_log(const App& app, Rect area) {
     draw_lines(area, lines);
 }
 
+Color color_of(games::Role role) {
+    switch (role) {
+        case games::Role::Empty:
+        case games::Role::Muted: return Color::Muted;
+        case games::Role::Accent: return Color::Accent;
+        case games::Role::Light: return Color::Light;
+        case games::Role::Warn: return Color::Warn;
+        case games::Role::Error: return Color::Error;
+        case games::Role::Blue: return Color::Blue;
+        case games::Role::Magenta: return Color::Magenta;
+        case games::Role::Cyan: return Color::Cyan;
+    }
+    return Color::Light;
+}
+
+/// Any game's board, in a box, with its status line underneath.
+void draw_game(App& app, Rect area) {
+    games::Frame frame = app.game->frame();
+    int width = frame.width + 2;
+    attr_t border = fg(Color::Muted);
+    put(area.y, area.x, "┌" + util::repeat("─", static_cast<std::size_t>(frame.width)) + "┐", border, width);
+    for (int y = 0; y < frame.height; ++y) {
+        int row = area.y + 1 + y;
+        put(row, area.x, "│", border, 1);
+        for (int x = 0; x < frame.width; ++x) {
+            const games::Cell& cell = frame.at(x, y);
+            if (cell.glyph != " ") put(row, area.x + 1 + x, cell.glyph, fg(color_of(cell.role), cell.bold), 1);
+        }
+        put(row, area.x + width - 1, "│", border, 1);
+    }
+    put(area.y + frame.height + 1, area.x, "└" + util::repeat("─", static_cast<std::size_t>(frame.width)) + "┘",
+        border, width);
+
+    // The install's news outranks the game's own message.
+    std::string banner = frame.banner;
+    Color color = color_of(frame.banner_role);
+    if (app.done_while_playing) {
+        banner = " Runix is installed · press Enter ";
+        color = Color::Accent;
+    }
+    if (!banner.empty()) {
+        int length = static_cast<int>(util::width(banner));
+        int column = area.x + std::max(1, (width - length) / 2);
+        put(area.y + 1 + frame.height / 2, column, banner, fg(color, true) | A_REVERSE, width - 2);
+    }
+    std::string status = frame.status;
+    int best = app.best_score(app.game_index);
+    if (best > 0) status = "best " + std::to_string(best) + "   " + status;
+    put(area.y + frame.height + 2, area.x, status, fg(Color::Muted), area.w);
+}
+
+/// The menu of games, until one is picked.
+void draw_hub(App& app, Rect area) {
+    std::vector<Line> lines{{span("Games", Color::Light, true),
+                             span("  while Nix installs; the install keeps going", Color::Muted)},
+                            {}};
+    draw_lines(take_rows(area, 2), lines);
+    std::vector<Line> items;
+    const auto& entries = games::catalog();
+    for (std::size_t index = 0; index < entries.size(); ++index) {
+        Line line = entry(entries[index].name, entries[index].description, 9);
+        int best = app.best_score(index);
+        if (best > 0) line.push_back(span("  best " + std::to_string(best), Color::Warn));
+        items.push_back(line);
+    }
+    choice_list(take_rows(area, static_cast<int>(items.size())), items, app.hub_list);
+    if (app.done_while_playing) {
+        take_rows(area, 1);
+        draw_lines(take_rows(area, 1), {{span("Runix is installed · press Enter", Color::Accent, true)}});
+    }
+}
+
 void draw_installing(App& app, Rect area) {
+    if (app.in_games()) {
+        // One line for the phases leaves the rest of the screen to the board.
+        std::size_t current = std::min(app.phase, install::phases.size() - 1);
+        draw_lines(take_rows(area, 1),
+                   {{span(std::string(1, spinner(app)) + " " + install::phases[current], Color::Light, true),
+                     span("  step " + std::to_string(current + 1) + " of " +
+                              std::to_string(install::phases.size()),
+                          Color::Muted)}});
+        draw_lines(take_rows(area, 1), {progress_bar(app, area.w)});
+        draw_lines(take_rows(area, 2), nix_lines(app));
+        take_rows(area, 1);
+        if (app.game) {
+            draw_game(app, area);
+        } else {
+            draw_hub(app, area);
+        }
+        return;
+    }
+    // The board that would fit here once the phases fold into one line:
+    // 5 rows of status above it, a border on each side and a status line.
+    app.game_rows = std::clamp(area.h - 5 - 3, 6, 14);
+    app.game_columns = std::clamp(area.w - 2, 20, 60);
     draw_lines(take_rows(area, static_cast<int>(install::phases.size())), phase_lines(app));
     take_rows(area, 1);
     draw_lines(take_rows(area, 1), {progress_bar(app, area.w)});
@@ -900,6 +1005,7 @@ void draw(App& app) {
             case Screen::Network: draw_network(app, content); break;
             case Screen::Disk: draw_disks(app, content); break;
             case Screen::Bootloader: draw_bootloader(app, content); break;
+            case Screen::Kernel: draw_kernel(app, content); break;
             case Screen::Partitioning: draw_partitioning(app, content); break;
             case Screen::Partitions: draw_partitions(app, content); break;
             case Screen::Filesystem: draw_filesystem(app, content); break;

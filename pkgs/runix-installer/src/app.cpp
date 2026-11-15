@@ -1,7 +1,9 @@
 #include "app.hpp"
 
 #include <algorithm>
+#include <cstdio>
 #include <fcntl.h>
+#include <random>
 #include <sys/file.h>
 #include <thread>
 #include <unistd.h>
@@ -22,12 +24,27 @@ std::optional<std::size_t> first_if(bool any) {
 
 }  // namespace
 
+namespace {
+
+/// A random ZFS host ID: eight hex digits, never zero, which ZFS treats as unset.
+std::string new_host_id() {
+    std::random_device random;
+    std::uint32_t value = 0;
+    while (value == 0) value = random();
+    char text[9];
+    std::snprintf(text, sizeof text, "%08x", value);
+    return text;
+}
+
+}  // namespace
+
 const char* title(Screen screen) {
     switch (screen) {
         case Screen::Welcome: return "Welcome";
         case Screen::Network: return "Network";
         case Screen::Disk: return "Disk";
         case Screen::Bootloader: return "Boot loader";
+        case Screen::Kernel: return "Kernel";
         case Screen::Partitioning: return "Partitioning";
         case Screen::Partitions: return "Partitions";
         case Screen::Filesystem: return "Filesystem";
@@ -119,6 +136,10 @@ config::BootLoader App::loader() const {
     return config::loaders[std::min(bootloader_list.selected.value_or(0), config::loaders.size() - 1)];
 }
 
+config::Kernel App::kernel() const {
+    return config::kernels[std::min(kernel_list.selected.value_or(0), config::kernels.size() - 1)];
+}
+
 config::Network App::connection() const {
     if (!wireless) return config::Network::Dhcpcd;
     return config::networks[std::min(connection_list.selected.value_or(0), config::networks.size() - 1)];
@@ -133,6 +154,7 @@ std::vector<std::pair<std::string, std::string>> App::summary() const {
         {"Disk", disk_text},
         {"Layout", layout_summary()},
         {"Boot loader", config::name(loader())},
+        {"Kernel", config::name(kernel())},
         {"Filesystem", config::name(filesystem())},
         {"Boot mode", config::name(boot_mode)},
         {"Host name", host.value},
@@ -408,7 +430,10 @@ void App::start_install() {
     plan.root_fs = filesystem();
     plan.boot_mode = boot_mode;
     plan.loader = loader();
+    plan.kernel = kernel();
     plan.disk = chosen->path;
+    if (zfs_host_id.empty()) zfs_host_id = new_host_id();
+    plan.zfs_host_id = zfs_host_id;
     log.clear();
     scroll = 0;
     phase = 0;
@@ -473,6 +498,8 @@ void App::on_install(const install::Update& update) {
             if (log.size() > max_log_lines) log.pop_front();
             break;
         case install::Update::Kind::Nix:
+            // Each package Nix finishes reaches the game: a pellet, a falling package.
+            if (game && update.nix.completed > nix.completed) game->package(games::package_name(update.nix.current));
             nix = update.nix;
             break;
         case install::Update::Kind::Finished:
@@ -481,8 +508,15 @@ void App::on_install(const install::Update& update) {
                 phase_done = true;
                 password.value.clear();
                 confirm.value.clear();
-                screen = Screen::Done;
+                // Never jump away mid-game; the board shows the news instead.
+                if (in_games()) {
+                    done_while_playing = true;
+                } else {
+                    screen = Screen::Done;
+                }
             } else {
+                // A failure always takes over the screen.
+                leave_games();
                 error = update.error;
                 screen = Screen::Failed;
             }
@@ -491,7 +525,13 @@ void App::on_install(const install::Update& update) {
 }
 
 void App::tick() {
-    ++frame;
+    // Time-based, so the spinner keeps its pace when the loop polls faster.
+    frame = static_cast<std::size_t>(
+        std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - created_).count() / 100);
+    auto now = Clock::now();
+    double seconds = std::chrono::duration<double>(now - last_update_).count();
+    last_update_ = now;
+    if (playing()) game->update(seconds);
     bool due = !last_check_ || Clock::now() - *last_check_ >= recheck_interval;
     if (screen == Screen::Network && online != OnlineState::Online && due) check_online();
 }
@@ -510,7 +550,11 @@ std::vector<std::pair<std::string, std::string>> App::hints() const {
         case Screen::Partitions:
             return {{"b", "boot"}, {"r", "root"}, {"f", "format boot"}, {"e", "cfdisk"}, {"enter", "continue"}, {"esc", "back"}};
         case Screen::Review: return {{"enter", "install"}, {"esc", "back"}};
-        case Screen::Installing: return {{"pgup/pgdn", "scroll log"}};
+        case Screen::Installing:
+            if (done_while_playing) return {{"enter", "continue"}};
+            if (game) return game->hints();
+            if (hub_open) return {{"up/down", "choose"}, {"enter", "play"}, {"esc", "back to the log"}};
+            return {{"g", "games"}, {"pgup/pgdn", "scroll log"}};
         case Screen::Failed:
             return {{"r", "retry"}, {"u", "upload log"}, {"b", "change settings"}, {"s", "shell"}, {"pgup/pgdn", "log"}};
         case Screen::Done: return {{"enter", "select"}};
@@ -562,7 +606,18 @@ void App::on_key(const Key& key) {
         case Screen::Bootloader:
             on_wizard_list_key(key, bootloader_list, config::loaders.size());
             break;
+        case Screen::Kernel:
+            on_wizard_list_key(key, kernel_list, config::kernels.size());
+            break;
         case Screen::Filesystem:
+            if (key.code == Key::Code::Enter) {
+                std::string problem = config::check_kernel(kernel(), filesystem());
+                if (!problem.empty()) {
+                    filesystem_error = problem;
+                    break;
+                }
+            }
+            filesystem_error.reset();
             on_wizard_list_key(key, filesystem_list, config::filesystems.size());
             break;
         case Screen::Desktop:
@@ -587,7 +642,13 @@ void App::on_key(const Key& key) {
             }
             break;
         case Screen::Installing:
-            on_log_key(key);
+            if (in_games()) {
+                on_games_key(key);
+            } else if (key.is('g')) {
+                hub_open = true;
+            } else {
+                on_log_key(key);
+            }
             break;
         case Screen::Failed:
             if (key.is('r')) {
@@ -622,6 +683,72 @@ void App::on_key(const Key& key) {
             }
             break;
     }
+}
+
+void App::start_game(std::size_t index) {
+    const auto& entries = games::catalog();
+    if (index >= entries.size()) return;
+    game_index = index;
+    // Sized by the UI to fit under the progress bar.
+    game = entries[index].make(game_columns, game_rows,
+                               static_cast<std::uint32_t>(Clock::now().time_since_epoch().count()));
+    last_update_ = Clock::now();
+}
+
+void App::close_game() {
+    if (!game) return;
+    if (best_.size() < games::catalog().size()) best_.resize(games::catalog().size(), 0);
+    best_[game_index] = std::max(best_[game_index], game->score());
+    game.reset();
+}
+
+void App::leave_games() {
+    close_game();
+    hub_open = false;
+}
+
+int App::best_score(std::size_t index) const {
+    int best = index < best_.size() ? best_[index] : 0;
+    if (game && index == game_index) best = std::max(best, game->score());
+    return best;
+}
+
+void App::on_games_key(const Key& key) {
+    if (done_while_playing) {
+        if (key.code == Key::Code::Enter) {
+            leave_games();
+            done_while_playing = false;
+            screen = Screen::Done;
+        }
+        return;
+    }
+    if (!game) {
+        // The menu.
+        if (key.code == Key::Code::Esc) {
+            hub_open = false;
+        } else if (key.code == Key::Code::Enter) {
+            start_game(hub_list.selected.value_or(0));
+        } else {
+            on_list_key(key, hub_list, games::catalog().size());
+        }
+        return;
+    }
+    if (key.code == Key::Code::Esc) {
+        close_game();
+        return;
+    }
+    if (game->over() && key.is('r')) {
+        // Keep this round's score before the next one starts.
+        if (best_.size() < games::catalog().size()) best_.resize(games::catalog().size(), 0);
+        best_[game_index] = std::max(best_[game_index], game->score());
+        game->input(games::Input::Restart);
+        return;
+    }
+    if (key.code == Key::Code::Up || key.is('w') || key.is('k')) game->input(games::Input::Up);
+    if (key.code == Key::Code::Down || key.is('s') || key.is('j')) game->input(games::Input::Down);
+    if (key.code == Key::Code::Left || key.is('a') || key.is('h')) game->input(games::Input::Left);
+    if (key.code == Key::Code::Right || key.is('d') || key.is('l')) game->input(games::Input::Right);
+    if (key.is(' ')) game->input(games::Input::Action);
 }
 
 void App::on_log_key(const Key& key) {

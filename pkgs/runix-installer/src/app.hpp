@@ -13,6 +13,7 @@
 
 #include "config.hpp"
 #include "install.hpp"
+#include "games.hpp"
 #include "system.hpp"
 
 inline constexpr const char* confirmation_word = "ERASE";
@@ -26,6 +27,7 @@ enum class Screen {
     Network,
     Disk,
     Bootloader,
+    Kernel,
     Partitioning,
     Partitions,
     Filesystem,
@@ -39,10 +41,10 @@ enum class Screen {
     Done,
 };
 
-inline constexpr std::array<Screen, 12> wizard{
-    Screen::Welcome,  Screen::Network, Screen::Disk,     Screen::Bootloader,
+inline constexpr std::array<Screen, 13> wizard{
+    Screen::Welcome,  Screen::Network,      Screen::Disk,       Screen::Bootloader, Screen::Kernel,
     Screen::Partitioning, Screen::Partitions, Screen::Filesystem, Screen::Account,
-    Screen::Timezone, Screen::Desktop, Screen::Connection, Screen::Review,
+    Screen::Timezone, Screen::Desktop,      Screen::Connection, Screen::Review,
 };
 
 const char* title(Screen screen);
@@ -58,7 +60,7 @@ enum class Exit { Shell, Reboot, Poweroff };
 enum class OnlineState { Checking, Online, Offline };
 
 struct Key {
-    enum class Code { Char, Enter, Esc, Up, Down, Tab, BackTab, Backspace, PageUp, PageDown, CtrlC, Other };
+    enum class Code { Char, Enter, Esc, Up, Down, Left, Right, Tab, BackTab, Backspace, PageUp, PageDown, CtrlC, Other };
     Code code = Code::Other;
     /// The typed character, as UTF-8, for Code::Char.
     std::string text;
@@ -166,6 +168,7 @@ public:
     std::vector<system_probe::Disk> disks;
     ListState disk_list;
     ListState bootloader_list;
+    ListState kernel_list;
     ListState partitioning_list;
     std::vector<system_probe::Partition> partitions;
     ListState partition_list;
@@ -173,6 +176,9 @@ public:
     std::optional<std::string> root_partition;
     bool format_boot = true;
     std::optional<std::string> partition_error;
+    std::optional<std::string> filesystem_error;
+    /// Generated once, so a retried install reuses the same ZFS host ID.
+    std::string zfs_host_id;
     std::optional<External> external;
     ListState filesystem_list;
 
@@ -206,12 +212,29 @@ public:
     ListState done_list;
     std::size_t frame = 0;
 
+    /// The game hub while the system installs: the menu, then a game.
+    bool hub_open = false;
+    ListState hub_list;
+    std::unique_ptr<games::Game> game;
+    std::size_t game_index = 0;
+    /// The install finished while the hub was open; Enter moves on.
+    bool done_while_playing = false;
+    bool in_games() const { return hub_open || game != nullptr; }
+    /// Whether the main loop should poll faster, for smooth movement.
+    bool playing() const { return game != nullptr && !done_while_playing; }
+    /// Board size that fits the screen, measured by the UI on each draw.
+    int game_columns = 24;
+    int game_rows = 9;
+    /// A game's best score this session, across every round played.
+    int best_score(std::size_t index) const;
+
     std::vector<std::string> visible_zones() const;
     std::string timezone() const;
     const system_probe::Disk* disk() const;
     config::Filesystem filesystem() const;
     config::Desktop desktop() const;
     config::BootLoader loader() const;
+    config::Kernel kernel() const;
     config::Network connection() const;
     std::vector<std::pair<std::string, std::string>> summary() const;
     std::vector<std::pair<std::string, std::string>> hints() const;
@@ -240,6 +263,14 @@ private:
     bool checking_ = false;
     std::optional<Clock::time_point> last_check_;
     int lock_fd_ = -1;
+    Clock::time_point created_ = Clock::now();
+    Clock::time_point last_update_ = Clock::now();
+    std::vector<int> best_;
+
+    void on_games_key(const Key& key);
+    void start_game(std::size_t index);
+    void close_game();
+    void leave_games();
 
     std::optional<std::string> selected_zone() const;
     const system_probe::Partition* selected_partition() const;

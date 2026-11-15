@@ -6,6 +6,7 @@
   e2fsprogs,
   flakeUrl ? "github:runix-community/runix",
   gptfdisk,
+  kmod,
   lib,
   logPasteUrl ? "https://paste.rs/",
   makeWrapper,
@@ -16,6 +17,7 @@
   stdenv,
   tzdata,
   util-linux,
+  zfs,
 }:
 stdenv.mkDerivation {
   pname = "runix-installer";
@@ -50,9 +52,11 @@ stdenv.mkDerivation {
           dosfstools
           e2fsprogs
           gptfdisk
+          kmod
           mkpasswd
           runix-install
           util-linux
+          zfs
         ]
       } \
       --set RUNIX_ZONEINFO ${tzdata}/share/zoneinfo \

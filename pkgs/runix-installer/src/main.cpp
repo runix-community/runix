@@ -95,6 +95,8 @@ Key read_key() {
         switch (character) {
             case KEY_UP: return Key::of(Key::Code::Up);
             case KEY_DOWN: return Key::of(Key::Code::Down);
+            case KEY_LEFT: return Key::of(Key::Code::Left);
+            case KEY_RIGHT: return Key::of(Key::Code::Right);
             case KEY_BTAB: return Key::of(Key::Code::BackTab);
             case KEY_BACKSPACE: return Key::of(Key::Code::Backspace);
             case KEY_PPAGE: return Key::of(Key::Code::PageUp);
@@ -146,6 +148,8 @@ Exit run(Options options) {
     App app(std::move(options), queue);
     while (true) {
         ui::draw(app);
+        // Snake moves on a short timer; the rest of the installer needs no hurry.
+        timeout(app.playing() ? 20 : 100);
         Key key = read_key();
         if (key.code != Key::Code::Other) app.on_key(key);
         while (auto message = queue->pop()) app.on_message(std::move(*message));

@@ -52,18 +52,38 @@ std::pair<std::string, std::string> targets(const DiskLayout& layout, const std:
 }
 
 Commands format_commands(const DiskLayout& layout, config::Filesystem root_fs, const std::string& boot,
-                         const std::string& root) {
+                         const std::string& root, const std::string& zfs_host_id) {
     Commands commands;
     bool format_boot = layout.kind == DiskLayout::Kind::Automatic || layout.format_boot;
     if (format_boot) commands.push_back({"mkfs.fat", "-F32", "-n", "RUNIXBOOT", boot});
     // Old signatures on a reused partition would confuse blkid later.
     commands.push_back({"wipefs", "-a", root});
-    if (root_fs == config::Filesystem::Ext4) {
-        commands.push_back({"mkfs.ext4", "-q", "-F", "-L", "runix-root", root});
-    } else {
-        commands.push_back({"mkfs.btrfs", "-q", "-f", "-L", "runix-root", root});
+    switch (root_fs) {
+        case config::Filesystem::Ext4:
+            commands.push_back({"mkfs.ext4", "-q", "-F", "-L", "runix-root", root});
+            break;
+        case config::Filesystem::Btrfs:
+            commands.push_back({"mkfs.btrfs", "-q", "-f", "-L", "runix-root", root});
+            break;
+        case config::Filesystem::Zfs:
+            // A pool records the host ID that last imported it, and refuses
+            // to import elsewhere unless it was exported. Creating it under
+            // the installed system's ID makes it that system's from the start.
+            commands.push_back({"zgenhostid", "-f", zfs_host_id});
+            commands.push_back({"modprobe", "zfs"});
+            commands.push_back({"zpool", "create", "-f", "-o", "ashift=12", "-o", "autotrim=on",
+                                "-O", "compression=zstd", "-O", "acltype=posixacl", "-O", "xattr=sa",
+                                "-O", "relatime=on", "-O", "dnodesize=auto", "-O", "normalization=formD",
+                                "-O", "mountpoint=none", "-O", "canmount=off", config::zfs_pool, root});
+            commands.push_back({"zfs", "create", "-o", "mountpoint=legacy", config::zfs_root_dataset});
+            break;
     }
     return commands;
+}
+
+std::vector<std::string> mount_root_command(config::Filesystem root_fs, const std::string& root) {
+    if (root_fs == config::Filesystem::Zfs) return {"mount", "-t", "zfs", config::zfs_root_dataset, target};
+    return {"mount", root, target};
 }
 
 std::vector<std::string> install_arguments(const std::string& flake_reference) {
@@ -159,7 +179,8 @@ private:
     std::chrono::steady_clock::time_point last_sent_{};
 
     void report_nix() {
-        NixStatus status{tracker_.fraction(), tracker_.summary(), tracker_.current()};
+        NixStatus status{tracker_.fraction(), tracker_.builds().done + tracker_.paths().done,
+                         tracker_.summary(), tracker_.current()};
         auto now = std::chrono::steady_clock::now();
         // Downloads report many times a second; the screen needs ten updates at most.
         bool same_text = status.summary == last_.summary && status.current == last_.current;
@@ -248,11 +269,11 @@ void install(const Plan& plan, Runner& runner) {
     wait_for_block_device(root);
 
     runner.phase(1);
-    runner.run_all(format_commands(plan.layout, plan.root_fs, boot, root));
+    runner.run_all(format_commands(plan.layout, plan.root_fs, boot, root, plan.zfs_host_id));
 
     runner.phase(2);
     make_directories(target);
-    runner.run({"mount", root, target});
+    runner.run(mount_root_command(plan.root_fs, root));
     std::string boot_target = std::string(target) + "/boot";
     make_directories(boot_target);
     runner.run({"mount", boot, boot_target});
@@ -269,14 +290,17 @@ void install(const Plan& plan, Runner& runner) {
     settings.timezone = plan.timezone;
     settings.desktop = plan.desktop;
     settings.network = plan.network;
-    settings.root_uuid = capture_trimmed({"blkid", "-s", "UUID", "-o", "value", root});
+    bool zfs = plan.root_fs == config::Filesystem::Zfs;
+    if (!zfs) settings.root_uuid = capture_trimmed({"blkid", "-s", "UUID", "-o", "value", root});
     settings.root_fs = plan.root_fs;
+    settings.zfs_host_id = plan.zfs_host_id;
     settings.boot_uuid = capture_trimmed({"blkid", "-s", "UUID", "-o", "value", boot});
     settings.boot_mode = plan.boot_mode;
     settings.loader = plan.loader;
+    settings.kernel = plan.kernel;
     settings.disk = plan.disk;
     settings.cpu = system_probe::cpu_vendor();
-    if (settings.root_uuid.empty() || settings.boot_uuid.empty()) {
+    if ((!zfs && settings.root_uuid.empty()) || settings.boot_uuid.empty()) {
         throw Failure{"blkid returned no filesystem UUID"};
     }
     std::string flake_directory = std::string(target) + "/etc/runix";
@@ -284,6 +308,7 @@ void install(const Plan& plan, Runner& runner) {
     write_file(flake_directory + "/flake.nix", config::flake(settings));
     write_file(flake_directory + "/hardware.nix", config::hardware(settings));
     write_file(flake_directory + "/configuration.nix", config::configuration(settings));
+    write_file(flake_directory + "/nix.nix", config::nix_settings(settings));
 
     // Keep the network joined in the live session for the first boot.
     std::error_code error;
@@ -342,7 +367,8 @@ void demo(bool fail, Runner& runner) {
             for (int chunk = 1; chunk <= 4; ++chunk) {
                 nix(R"({"action":"result","id":)" + std::to_string(transfer) + R"(,"type":105,"fields":[)" +
                     std::to_string(path_bytes * chunk / 4) + "," + std::to_string(path_bytes) + ",0,0]}");
-                std::this_thread::sleep_for(15ms);
+                // Slow enough to try the snake game in --demo.
+                std::this_thread::sleep_for(80ms);
             }
             nix(R"({"action":"stop","id":)" + std::to_string(transfer) + "}");
             nix(R"({"action":"stop","id":)" + std::to_string(substitute) + "}");
@@ -359,7 +385,7 @@ void demo(bool fail, Runner& runner) {
             for (int step = 1; step <= 5; ++step) {
                 nix(R"({"action":"result","id":)" + std::to_string(id) +
                     R"(,"type":101,"fields":["demo build output line )" + std::to_string(step) + "\"]}");
-                std::this_thread::sleep_for(120ms);
+                std::this_thread::sleep_for(400ms);
             }
             nix(R"({"action":"stop","id":)" + std::to_string(id) + "}");
             if (fail && build == builds / 2) {
@@ -378,6 +404,9 @@ void demo(bool fail, Runner& runner) {
 void unmount(bool demo) {
     if (demo) return;
     process::capture({"umount", "-R", target});
+    // An exported pool imports cleanly on first boot, and a retry can
+    // recreate it. Without a ZFS install there is no such pool to export.
+    process::capture({"zpool", "export", config::zfs_pool});
 }
 
 void spawn(Plan plan, bool demo_mode, bool demo_fail, Sender send) {
