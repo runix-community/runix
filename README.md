@@ -3,6 +3,10 @@
 A NixOS that runs on Runit.
 Docs are in progress.
 
+Runix is also the Linux distribution you can play games in while it installs:
+Snake, Fetch and Bricks, right in the installer, tied to the packages Nix is
+downloading. See [Games while you install](#games-while-you-install).
+
 # Warning
 Just in case it isn't obvious, Runix is a very new project, so test it in a VM.
 
@@ -62,6 +66,32 @@ When it finishes, it can open a shell inside the installed system.
 If an installation fails, it offers to upload the log, with host and user
 names replaced, so it can be linked from a GitHub issue. Uploads go to
 paste.rs unless `runix.iso.logPasteUrl` names another service.
+
+![Every step of the Runix installer, from Welcome to Done](assets/installer-steps.png)
+
+### Games while you install
+
+Downloading a system takes a while, so the installer has a small game hub.
+Press `g` on the install screen and pick one:
+
+| Game | What it is |
+|---|---|
+| Snake | Eat, grow, stay off the walls. Every package Nix finishes drops a pellet. |
+| Fetch | Catch the packages Nix is installing as they fall, by their real names. Red ones are broken: `[hash mismatch]`, `[corrupt nar]`. Let those fall. |
+| Bricks | Break the wall. The ball and the debris of broken bricks run on a small 2D XPBD physics solver; catch the debris for extra points. |
+
+The install never waits on a game: its progress stays on screen above the
+board, a failure takes over at once, and when it finishes the game pauses with
+"Runix is installed · press Enter". It all runs on the text console, so it
+works over a serial line too. Try it without installing anything:
+`runix-installer --demo`, then `g` once the install step starts.
+
+Games during a long wait are not new: video games have had playable loading
+screens since the 1980s. In an operating system installer they are rare. In
+2004 someone asked Fedora for
+[small games during installation](https://bugzilla.redhat.com/show_bug.cgi?id=115644),
+and the request was closed as WONTFIX, the reasoning being that an OS
+installation is not a gaming console. Runix respectfully disagrees.
 
 ## Package channel
 
