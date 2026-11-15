@@ -81,8 +81,13 @@ let
           ip address show dev "$interface"
           ;;
         scan)
-          wpa_cli -p ${controlDirectory} -i "$interface" scan >/dev/null
-          sleep 2
+          wpa_cli -p ${controlDirectory} -i "$interface" scan >/dev/null || true
+          # Scans take several seconds on many cards; wait for results.
+          tries=0
+          while [ "$(wpa_cli -p ${controlDirectory} -i "$interface" scan_results | wc -l)" -le 1 ] && [ "$tries" -lt 10 ]; do
+            sleep 1
+            tries=$((tries + 1))
+          done
           wpa_cli -p ${controlDirectory} -i "$interface" scan_results
           ;;
         connect)
@@ -127,15 +132,12 @@ let
           echo "runix-network: associated with $ssid, requesting DHCP lease ..."
           dhcpcd -n "$interface" || dhcpcd "$interface" || true
           tries=0
-          until ip -4 address show dev "$interface" | grep '^[[:space:]]*inet ' >/dev/null; do
+          # A 169.254 link-local address is not a lease; wait for a real one
+          # and its default route.
+          until ip -4 address show dev "$interface" | grep '^[[:space:]]*inet ' | grep -v ' 169\.254\.' >/dev/null &&
+            ip -4 route show default dev "$interface" | grep '^default ' >/dev/null; do
             tries=$((tries + 1))
-            [ "$tries" -lt 30 ] || { echo "runix-network: connected to $ssid, but DHCP timed out" >&2; exit 1; }
-            sleep 1
-          done
-          tries=0
-          until ip -4 route show default dev "$interface" | grep '^default ' >/dev/null; do
-            tries=$((tries + 1))
-            [ "$tries" -lt 10 ] || { echo "runix-network: connected to $ssid, but no default route was received" >&2; exit 1; }
+            [ "$tries" -lt 45 ] || { echo "runix-network: joined $ssid, but got no address from DHCP" >&2; exit 1; }
             sleep 1
           done
           echo "runix-network: connected to $ssid"
