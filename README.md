@@ -178,6 +178,30 @@ does not need its own nixpkgs input. To use packages the flake builds itself,
 export `runixModules.default = import ./module.nix self;` and read them from
 `self.packages.${pkgs.stdenv.hostPlatform.system}` inside the module.
 
+## Your own programs
+
+`runix.lib.mkProgram` turns any package into a `programs.<name>` module, like
+the built-in ones:
+
+```nix
+modules = [
+  (runix.lib.mkProgram {
+    name = "foot";
+    package = pkgs: pkgs.foot;
+  })
+  (runix.lib.mkProgram {
+    name = "sway";
+    package = pkgs: pkgs.sway;
+    session = true; # a Wayland compositor: offered at the login screen
+  })
+  { programs.foot.enable = true; programs.sway.enable = true; }
+];
+```
+
+`extraConfig = cfg: { ... }` adds settings of your own. A flake can ship
+programs this way as `runixModules`; `nix flake init -t
+github:runix-community/runix#program` starts one.
+
 ## Networking
 
 `dhcpcd` is currently the recommended network configuration service:

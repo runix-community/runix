@@ -49,7 +49,8 @@ let
         "zwwm"
         "shojiwm"
         "driftwm"
-      ];
+      ]
+      ++ config.runix.wayland.sessionPackages;
     pathsToLink = [ "/share/wayland-sessions" ];
   };
 
@@ -151,14 +152,16 @@ in
         message = "runix.desktop requires runix.systemServices.elogind";
       }
       {
-        assertion = lib.any (name: programs.${name}.enable) [
-          "hyprland"
-          "labwc"
-          "niri"
-          "zwwm"
-          "shojiwm"
-          "driftwm"
-        ];
+        assertion =
+          config.runix.wayland.sessionPackages != [ ]
+          || lib.any (name: programs.${name}.enable) [
+            "hyprland"
+            "labwc"
+            "niri"
+            "zwwm"
+            "shojiwm"
+            "driftwm"
+          ];
         message = "runix.desktop requires at least one enabled Wayland compositor";
       }
     ];

@@ -1,6 +1,13 @@
 { config, lib, ... }:
 {
-  options.runix.wayland.enable = lib.mkEnableOption "shared Wayland compositor infrastructure";
+  options.runix.wayland = {
+    enable = lib.mkEnableOption "shared Wayland compositor infrastructure";
+    sessionPackages = lib.mkOption {
+      type = lib.types.listOf lib.types.package;
+      default = [ ];
+      description = "Compositors from outside Runix whose share/wayland-sessions entries the login screen offers; runix.lib.mkProgram adds to it.";
+    };
+  };
 
   config = lib.mkIf config.runix.wayland.enable {
     hardware.graphics.enable = lib.mkDefault true;

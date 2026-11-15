@@ -147,6 +147,30 @@
             inherit system;
             modules = [ ./examples/configuration.nix ];
           };
+          # Programs made with mkProgram: a tool, and a compositor that is the
+          # desktop's only one.
+          customProgramSystem = self.lib.runixSystem {
+            inherit system;
+            modules = [
+              (self.lib.mkProgram {
+                name = "hello";
+                package = pkgs: pkgs.hello;
+                extraConfig = cfg: { runix.environmentVariables.RUNIX_TEST_HELLO = "${cfg.package}"; };
+              })
+              (self.lib.mkProgram {
+                name = "sway";
+                package = pkgs: pkgs.sway;
+                session = true;
+              })
+              {
+                fileSystems."/" = { device = "/dev/vda"; fsType = "ext4"; };
+                programs.hello.enable = true;
+                programs.sway.enable = true;
+                programs.hyprland.enable = false;
+                runix.desktop.enable = true;
+              }
+            ];
+          };
           # A system that takes a service from another flake, the way users do.
           serviceFlake = import ./templates/service/flake.nix;
           flakeServiceSystem = self.lib.runixSystem {
@@ -200,6 +224,15 @@
                 bash ${./tests/services.sh} ${serviceTest.config.runix.build.serviceTree}
                 touch "$out"
               '';
+          custom-program =
+            let
+              built = customProgramSystem.config;
+            in
+            assert built.runix.wayland.enable;
+            assert builtins.elem built.programs.sway.package built.runix.wayland.sessionPackages;
+            assert builtins.elem built.programs.hello.package built.runix.packages;
+            assert built.runix.environmentVariables.RUNIX_TEST_HELLO == "${built.programs.hello.package}";
+            pkgs.writeText "runix-custom-program-test" "ok";
           flake-service =
             pkgs.runCommand "runix-flake-service-test" { }
               ''
@@ -267,10 +300,16 @@
         path = ./templates/service;
         description = "A flake that adds a runit service to Runix systems";
       };
+      templates.program = {
+        path = ./templates/program;
+        description = "A flake that adds programs.<name> modules to Runix systems";
+      };
       templates.default = self.templates.service;
 
       lib.mkPkgs = mkPkgs;
       lib.mkPkgsWith = mkPkgsWith;
+      # A programs.<name> module for any package; see lib/mk-program.nix.
+      lib.mkProgram = import ./lib/mk-program.nix;
 
       lib.runixSystem =
         {
