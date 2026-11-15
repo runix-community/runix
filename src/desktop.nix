@@ -180,6 +180,10 @@ in
       elogind.enable = lib.mkDefault true;
       polkit.enable = lib.mkDefault true;
       seatd.enable = lib.mkDefault true;
+      # Battery state, and power saver / balanced / performance profiles,
+      # which desktop shells such as blxshell show and switch.
+      upower.enable = lib.mkDefault true;
+      powerProfiles.enable = lib.mkDefault true;
     };
     runix.users = {
       sddm = {
