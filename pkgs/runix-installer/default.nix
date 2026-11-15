@@ -14,12 +14,12 @@
   ncurses,
   pkg-config,
   runix-install,
-  stdenv,
+  clangStdenv,
   tzdata,
   util-linux,
   zfs,
 }:
-stdenv.mkDerivation {
+clangStdenv.mkDerivation {
   pname = "runix-installer";
   version = "0.2.0";
   src = lib.fileset.toSource {

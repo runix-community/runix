@@ -85,7 +85,8 @@ private:
             if (!consume(':')) return false;
             Value member;
             if (!parse_value(member, depth + 1)) return false;
-            value.members.emplace_back(std::move(key), std::move(member));
+            value.keys.push_back(std::move(key));
+            value.values.push_back(std::move(member));
         } while (consume(','));
         return consume('}');
     }
@@ -193,8 +194,8 @@ private:
 }  // namespace
 
 const Value& Value::operator[](std::string_view key) const {
-    for (const auto& [name, member] : members) {
-        if (name == key) return member;
+    for (std::size_t index = 0; index < keys.size(); ++index) {
+        if (keys[index] == key) return values[index];
     }
     return null_value;
 }

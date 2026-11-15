@@ -126,7 +126,7 @@ TEST(cachyos_kernels_bring_their_flake_and_cache) {
     CHECK(has(flake_text, "\"https://cache.lantian.pub/lantian\""));
     CHECK(has(flake_text, "\"lantian:WVGO7vsRMSEN+h7Lp7kv6SAmrkEXgUGbbXm7jMDjBuQ=\""));
     CHECK(has(flake_text, "\"https://runix-community.cachix.org\""));
-    CHECK(has(flake_text, "{ runix, nix-cachyos-kernel, ... }:"));
+    CHECK(has(flake_text, "{ nix-cachyos-kernel, runix, ... }:"));
     CHECK(has(flake_text, "specialArgs = { inherit nix-cachyos-kernel; };"));
     // The cached kernels were built with the flake's own nixpkgs.
     CHECK(!has(flake_text, "follows"));

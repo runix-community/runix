@@ -21,7 +21,10 @@ public:
     double number = 0;
     std::string text;
     std::vector<Value> items;
-    std::vector<std::pair<std::string, Value>> members;
+    // Keys and values side by side: a pair cannot hold the still-incomplete
+    // Value, while a vector can.
+    std::vector<std::string> keys;
+    std::vector<Value> values;
 
     bool is_null() const { return type == Type::Null; }
     bool is_string() const { return type == Type::String; }
