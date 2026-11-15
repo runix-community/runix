@@ -37,12 +37,6 @@ let
     . /etc/profile
     export HOME=/root USER=root
     cd /root
-    # A larger, sharper console font; the serial console has no font to set.
-    case "$(${pkgs.coreutils}/bin/tty)" in
-      /dev/tty[0-9]*)
-        ${pkgs.kbd}/bin/setfont ${pkgs.terminus_font}/share/consolefonts/ter-v22b.psf.gz 2>/dev/null || true
-        ;;
-    esac
     ${lib.getExe installer} || true
     exec ${pkgs.bashInteractive}/bin/bash --login
   '';
