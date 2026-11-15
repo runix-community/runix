@@ -204,7 +204,8 @@ in
         "full"
         "none"
       ];
-      default = "installer";
+      # Full: the trimmed set missed Wi-Fi chips that the full one covers.
+      default = "full";
       description = ''
         Firmware in the image. `installer` covers Wi-Fi and wired network
         cards and AMD and Intel graphics; `full` is all of linux-firmware,
