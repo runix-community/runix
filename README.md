@@ -99,6 +99,55 @@ Each has a `package` option, for example
 When `runix.desktop.enable = true`, enabled Wayland sessions appear in SDDM.
 To use only another compositor, set `programs.hyprland.enable = false`.
 
+## Services from other flakes
+
+Any flake can add runit services, or other settings, to Runix systems by
+exporting a module as `runixModules.<name>`. Start one from the template:
+
+```sh
+nix flake init -t github:runix-community/runix#service
+```
+
+The module defines its own options and turns them into `runix.services`
+entries. That option takes a `command` or `script`, plus `user`, `group`,
+`environment`, `path`, `after`, `check`, `restart` and `log`:
+
+```nix
+# module.nix in the service's flake
+{ config, lib, pkgs, ... }:
+{
+  options.services.hello.enable = lib.mkEnableOption "the hello service";
+  config = lib.mkIf config.services.hello.enable {
+    runix.services.hello.command = "${pkgs.hello}/bin/hello --greeting=hi";
+  };
+}
+```
+
+A Runix flake then adds that flake as an input and imports the module:
+
+```nix
+{
+  inputs.runix.url = "github:runix-community/runix";
+  inputs.hello.url = "github:someone/hello-runix";
+
+  outputs = { runix, hello, ... }: {
+    runixConfigurations.machine = runix.lib.runixSystem {
+      system = "x86_64-linux";
+      modules = [
+        hello.runixModules.default
+        { services.hello.enable = true; }
+        ./configuration.nix
+      ];
+    };
+  };
+}
+```
+
+The module gets `pkgs` from the system that imports it, so the service flake
+does not need its own nixpkgs input. To use packages the flake builds itself,
+export `runixModules.default = import ./module.nix self;` and read them from
+`self.packages.${pkgs.stdenv.hostPlatform.system}` inside the module.
+
 ## Networking
 
 `dhcpcd` is currently the recommended network configuration service:

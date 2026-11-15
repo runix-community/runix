@@ -146,6 +146,18 @@
             inherit system;
             modules = [ ./examples/configuration.nix ];
           };
+          # A system that takes a service from another flake, the way users do.
+          serviceFlake = import ./templates/service/flake.nix;
+          flakeServiceSystem = self.lib.runixSystem {
+            inherit system;
+            modules = [
+              (serviceFlake.outputs { self = null; }).runixModules.default
+              {
+                services.hello.enable = true;
+                services.hello.greeting = "flake check";
+              }
+            ];
+          };
           serviceTest = self.lib.runixSystem {
             inherit system;
             modules = [
@@ -185,6 +197,15 @@
               }
               ''
                 bash ${./tests/services.sh} ${serviceTest.config.runix.build.serviceTree}
+                touch "$out"
+              '';
+          flake-service =
+            pkgs.runCommand "runix-flake-service-test" { }
+              ''
+                tree=${flakeServiceSystem.config.runix.build.serviceTree}
+                test -x "$tree/hello/run"
+                body=$(grep -o '/nix/store/[^ ]*-runix-service-hello-body' "$tree/hello/run")
+                grep -q "flake check" "$body"
                 touch "$out"
               '';
           activation =
@@ -238,6 +259,14 @@
       );
 
       nixosModules.default = ./src;
+
+      # Other flakes ship services and settings for Runix as `runixModules`;
+      # `nix flake init -t github:runix-community/runix#service` starts one.
+      templates.service = {
+        path = ./templates/service;
+        description = "A flake that adds a runit service to Runix systems";
+      };
+      templates.default = self.templates.service;
 
       lib.mkPkgs = mkPkgs;
 
