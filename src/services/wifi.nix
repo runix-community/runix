@@ -69,6 +69,11 @@ let
       }
 
       ${interfaceScript}
+      # Runs a wpa_cli command that must answer OK.
+      cli() {
+        reply=$(wpa_cli -p ${controlDirectory} -i "$interface" "$@")
+        [ "$reply" = OK ] || { echo "runix-network: wpa_supplicant refused '$1 ''${2:-}': $reply" >&2; exit 1; }
+      }
       action="''${1:-}"
       case "$action" in
         status)
@@ -93,33 +98,42 @@ let
           network_id=$(wpa_cli -p ${controlDirectory} -i "$interface" add_network)
           case "$network_id" in *[!0-9]*|"") echo "runix-network: failed to add network" >&2; exit 1 ;; esac
           ssid_hex=$(printf '%s' "$ssid" | od -An -tx1 | tr -d ' \n')
-          wpa_cli -p ${controlDirectory} -i "$interface" set_network "$network_id" ssid "$ssid_hex" >/dev/null
+          cli set_network "$network_id" ssid "$ssid_hex"
           if [ "$#" -eq 3 ]; then
             psk=$(wpa_passphrase "$ssid" "$3" | grep -E '^[[:space:]]*psk=[0-9a-f]{64}$')
             psk=''${psk#*=}
-            wpa_cli -p ${controlDirectory} -i "$interface" set_network "$network_id" psk "$psk" >/dev/null
+            cli set_network "$network_id" psk "$psk"
           else
-            wpa_cli -p ${controlDirectory} -i "$interface" set_network "$network_id" key_mgmt NONE >/dev/null
+            cli set_network "$network_id" key_mgmt NONE
           fi
-          wpa_cli -p ${controlDirectory} -i "$interface" enable_network "$network_id" >/dev/null
-          wpa_cli -p ${controlDirectory} -i "$interface" select_network "$network_id" >/dev/null
-          wpa_cli -p ${controlDirectory} -i "$interface" save_config >/dev/null
+          cli set_network "$network_id" scan_ssid 1
+          cli select_network "$network_id"
+          cli enable_network "$network_id"
+          cli reassociate
+          # Saving is best effort: the connection works without it.
+          wpa_cli -p ${controlDirectory} -i "$interface" save_config >/dev/null || true
           tries=0
-          until wpa_cli -p ${controlDirectory} -i "$interface" status | grep -q '^wpa_state=COMPLETED$'; do
+          # Not `grep -q`: under pipefail, its early exit can fail the pipe
+          # with SIGPIPE even when the line is there.
+          until wpa_cli -p ${controlDirectory} -i "$interface" status | grep -x 'wpa_state=COMPLETED' >/dev/null; do
             tries=$((tries + 1))
-            [ "$tries" -lt 30 ] || { echo "runix-network: association with $ssid timed out" >&2; exit 1; }
+            if [ "$tries" -ge 30 ]; then
+              state=$(wpa_cli -p ${controlDirectory} -i "$interface" status | grep '^wpa_state=' || true)
+              echo "runix-network: association with $ssid timed out (''${state:-no state})" >&2
+              exit 1
+            fi
             sleep 1
           done
           echo "runix-network: associated with $ssid, requesting DHCP lease ..."
-          dhcpcd -n "$interface"
+          dhcpcd -n "$interface" || dhcpcd "$interface" || true
           tries=0
-          until ip -4 address show dev "$interface" | grep -q '^[[:space:]]*inet '; do
+          until ip -4 address show dev "$interface" | grep '^[[:space:]]*inet ' >/dev/null; do
             tries=$((tries + 1))
             [ "$tries" -lt 30 ] || { echo "runix-network: connected to $ssid, but DHCP timed out" >&2; exit 1; }
             sleep 1
           done
           tries=0
-          until ip -4 route show default dev "$interface" | grep -q '^default '; do
+          until ip -4 route show default dev "$interface" | grep '^default ' >/dev/null; do
             tries=$((tries + 1))
             [ "$tries" -lt 10 ] || { echo "runix-network: connected to $ssid, but no default route was received" >&2; exit 1; }
             sleep 1
