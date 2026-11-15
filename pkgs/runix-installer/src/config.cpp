@@ -1,5 +1,6 @@
 #include "config.hpp"
 
+#include <algorithm>
 #include <cstdio>
 
 namespace config {
@@ -270,6 +271,37 @@ std::string hardware(const Settings& settings) {
                        "    hostId = \"" + settings.zfs_host_id + "\";\n"
                        "  };\n";
     }
+    // The usual disk controllers, plus whatever this machine's root disk sits
+    // behind, so an unusual controller (eMMC, RAID, ...) is found at boot too.
+    std::vector<std::string> modules{"ahci", "nvme", "sd_mod", "uas", "usb_storage",
+                                     "virtio_blk", "virtio_pci", "virtio_scsi", "xhci_pci"};
+    std::vector<std::string> load{"ahci", "nvme", "sd_mod", "virtio_blk", "virtio_pci", "virtio_scsi"};
+    std::vector<std::string> detected;
+    for (const auto& module : settings.disk_modules) {
+        if (std::find(modules.begin(), modules.end(), module) == modules.end()) {
+            modules.push_back(module);
+            detected.push_back(module);
+        }
+        if (std::find(load.begin(), load.end(), module) == load.end()) load.push_back(module);
+    }
+    auto list = [](const std::vector<std::string>& names) {
+        std::string text;
+        for (const auto& name : names) text += "      \"" + name + "\"\n";
+        return text;
+    };
+    std::string initrd = "  runix.initrd = {\n";
+    if (!detected.empty()) {
+        initrd += "    # Found on this machine for its root disk:";
+        for (const auto& module : detected) initrd += " " + module;
+        initrd += ".\n";
+    }
+    initrd += "    modules = [\n" + list(modules) + "    ];\n"
+              "    loadModules = [\n" + list(load) + "    ];\n"
+              "  };\n";
+    std::string graphics;
+    if (settings.amd_gpu) graphics += "  hardware.amdgpu.enable = true;\n";
+    if (settings.intel_gpu) graphics += "  hardware.intelGraphics.enable = true;\n";
+
     std::string header = "{\n";
     std::string nvidia;
     if (settings.nvidia_device) {
@@ -297,31 +329,11 @@ std::string hardware(const Settings& settings) {
            "      fsType = \"vfat\";\n"
            "    };\n"
            "  };\n"
-           "\n"
-           "  runix.initrd = {\n"
-           "    modules = [\n"
-           "      \"ahci\"\n"
-           "      \"nvme\"\n"
-           "      \"sd_mod\"\n"
-           "      \"uas\"\n"
-           "      \"usb_storage\"\n"
-           "      \"virtio_blk\"\n"
-           "      \"virtio_pci\"\n"
-           "      \"virtio_scsi\"\n"
-           "      \"xhci_pci\"\n"
-           "    ];\n"
-           "    loadModules = [\n"
-           "      \"ahci\"\n"
-           "      \"nvme\"\n"
-           "      \"sd_mod\"\n"
-           "      \"virtio_blk\"\n"
-           "      \"virtio_pci\"\n"
-           "      \"virtio_scsi\"\n"
-           "    ];\n"
-           "  };\n"
+           "\n" +
+           initrd +
            "\n"
            "  hardware.enableRedistributableFirmware = true;\n" +
-           microcode +
+           microcode + graphics +
            "  runix.boot.loader." + option(settings.loader) + " = {\n"
            "    enable = true;\n"
            "    mode = \"" + name(settings.boot_mode) + "\";\n" +

@@ -197,7 +197,8 @@ public:
     ListState connection_list;
     Input confirmation;
     config::BootMode boot_mode = config::BootMode::Efi;
-    /// An NVIDIA GPU found on this machine, which gets the proprietary driver.
+    /// Graphics found on this machine; NVIDIA gets the proprietary driver.
+    system_probe::Gpus gpus;
     std::optional<std::uint32_t> nvidia_device;
 
     std::size_t phase = 0;
@@ -239,6 +240,7 @@ public:
     config::Kernel kernel() const;
     config::Network connection() const;
     std::vector<std::pair<std::string, std::string>> summary() const;
+    std::string graphics_summary() const;
     std::vector<std::pair<std::string, std::string>> hints() const;
 
     bool applicable(Screen screen) const;

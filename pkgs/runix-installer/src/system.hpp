@@ -64,6 +64,21 @@ config::BootMode boot_mode();
 /// `pci_devices` (normally /sys/bus/pci/devices), if there is one.
 std::optional<std::uint32_t> find_nvidia(const std::string& pci_devices);
 std::optional<std::uint32_t> nvidia_gpu(bool demo);
+
+/// The graphics on this machine, from the PCI display controllers.
+struct Gpus {
+    bool amd = false;
+    bool intel = false;
+    std::optional<std::uint32_t> nvidia;
+};
+Gpus find_gpus(const std::string& pci_devices);
+Gpus gpus(bool demo);
+
+/// The kernel modules between a disk and the machine: its controller, bus
+/// and disk drivers (nvme, ahci and sd_mod, xhci_pci and usb_storage...).
+/// Walks /sys/block/<name>/device up through `sys` and keeps drivers that are
+/// loadable modules, per `sys`/module/<module>/initstate.
+std::vector<std::string> disk_modules(const std::string& sys, const std::string& disk);
 config::Cpu cpu_vendor();
 
 }  // namespace system_probe

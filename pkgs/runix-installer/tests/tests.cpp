@@ -275,6 +275,75 @@ TEST(nvidia_display_controllers_are_found_in_sysfs) {
     std::filesystem::remove_all(root);
 }
 
+TEST(disk_modules_follow_the_disk_to_its_controller) {
+    namespace fs = std::filesystem;
+    fs::path sys = fs::temp_directory_path() / ("runix-sys-" + std::to_string(getpid()));
+    fs::remove_all(sys);
+    auto loadable = [&](const std::string& name) {
+        fs::create_directories(sys / "module" / name);
+        std::ofstream(sys / "module" / name / "initstate") << "live\n";
+    };
+    auto driver = [&](const fs::path& device, const std::string& name, const char* module) {
+        fs::create_directories(device);
+        fs::create_directories(sys / "bus" / "drivers" / name);
+        if (module != nullptr) {
+            fs::create_directories(sys / "module" / module);
+            if (!fs::exists(sys / "bus" / "drivers" / name / "module"))
+                fs::create_directory_symlink(sys / "module" / module, sys / "bus" / "drivers" / name / "module");
+        }
+        fs::create_directory_symlink(sys / "bus" / "drivers" / name, device / "driver");
+    };
+    // A USB stick: sd_mod <- usb_storage <- (built-in usb) <- xhci_pci <- pcieport.
+    fs::path pci = sys / "devices" / "pci0000:00";
+    fs::path port = pci / "0000:00:1c.0";
+    fs::path xhci = port / "0000:00:14.0";
+    fs::path storage = xhci / "usb1" / "1-6" / "1-6:1.0";
+    fs::path scsi = storage / "host6" / "target6:0:0" / "6:0:0:0";
+    driver(port, "pcieport", "pcieportdrv");  // built in: no initstate
+    driver(xhci, "xhci_hcd", "xhci_pci");
+    driver(xhci / "usb1", "usb", nullptr);
+    driver(storage, "usb-storage", "usb_storage");
+    driver(scsi, "sd", "sd_mod");
+    for (const char* module : {"xhci_pci", "usb_storage", "sd_mod"}) loadable(module);
+    fs::create_directories(sys / "block" / "sdb");
+    fs::create_directory_symlink(scsi, sys / "block" / "sdb" / "device");
+    auto modules = system_probe::disk_modules(sys.string(), "/dev/sdb");
+    CHECK((modules == std::vector<std::string>{"sd_mod", "usb_storage", "xhci_pci"}));
+    CHECK(system_probe::disk_modules(sys.string(), "/dev/missing").empty());
+    fs::remove_all(sys);
+}
+
+TEST(gpus_are_found_by_vendor) {
+    namespace fs = std::filesystem;
+    fs::path root = fs::temp_directory_path() / ("runix-gpus-" + std::to_string(getpid()));
+    auto device = [&](const std::string& slot, const char* vendor, const char* kind) {
+        fs::create_directories(root / slot);
+        std::ofstream(root / slot / "vendor") << vendor << "\n";
+        std::ofstream(root / slot / "device") << "0x1234\n";
+        std::ofstream(root / slot / "class") << kind << "\n";
+    };
+    device("0000:00:02.0", "0x8086", "0x030000");  // Intel iGPU
+    device("0000:03:00.0", "0x1002", "0x030000");  // AMD dGPU
+    device("0000:00:1f.3", "0x8086", "0x040300");  // Intel audio: not a GPU
+    auto found = system_probe::find_gpus(root.string());
+    CHECK(found.amd && found.intel && !found.nvidia);
+    fs::remove_all(root);
+
+    auto value = settings();
+    value.amd_gpu = true;
+    value.disk_modules = {"sd_mod", "mmc_block", "sdhci_pci"};
+    auto text = config::hardware(value);
+    CHECK(has(text, "hardware.amdgpu.enable = true;"));
+    CHECK(!has(text, "intelGraphics"));
+    CHECK(has(text, "# Found on this machine for its root disk: mmc_block sdhci_pci."));
+    CHECK(has(text, "\"mmc_block\""));
+    // The usual list stays, and nothing is listed twice.
+    CHECK(has(text, "\"nvme\""));
+    std::size_t first = text.find("\"sd_mod\"");
+    CHECK(text.find("\"sd_mod\"", text.find("\"sd_mod\"", first + 1) + 1) == std::string::npos);
+    CHECK(!has(config::hardware(settings()), "Found on this machine"));
+}
+
 TEST(names_that_could_break_nix_are_rejected) {
     CHECK(config::valid_host("my-host1"));
     CHECK(!config::valid_host(""));

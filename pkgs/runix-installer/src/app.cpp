@@ -94,7 +94,8 @@ App::App(Options options_, std::shared_ptr<Queue> queue)
     zones = system_probe::timezones(options.zoneinfo);
     wireless = system_probe::wireless_available(options.demo);
     boot_mode = options.demo ? config::BootMode::Efi : system_probe::boot_mode();
-    nvidia_device = system_probe::nvidia_gpu(options.demo);
+    gpus = system_probe::gpus(options.demo);
+    nvidia_device = gpus.nvidia;
 }
 
 App::~App() {
@@ -146,6 +147,17 @@ config::Network App::connection() const {
     return config::networks[std::min(connection_list.selected.value_or(0), config::networks.size() - 1)];
 }
 
+std::string App::graphics_summary() const {
+    std::vector<std::string> parts;
+    if (nvidia_device) parts.push_back(std::string("NVIDIA (proprietary, ") + config::nvidia_driver(*nvidia_device).branch + ")");
+    if (gpus.amd) parts.push_back("AMD");
+    if (gpus.intel) parts.push_back("Intel");
+    if (parts.empty()) return "no GPU found, generic drivers";
+    std::string text;
+    for (const auto& part : parts) text += (text.empty() ? "" : " + ") + part;
+    return text;
+}
+
 std::vector<std::pair<std::string, std::string>> App::summary() const {
     std::string disk_text = "none";
     if (const auto* chosen = disk()) {
@@ -158,9 +170,7 @@ std::vector<std::pair<std::string, std::string>> App::summary() const {
         {"Kernel", config::name(kernel())},
         {"Filesystem", config::name(filesystem())},
         {"Boot mode", config::name(boot_mode)},
-        {"Graphics", nvidia_device ? std::string("NVIDIA, proprietary driver (") +
-                                         config::nvidia_driver(*nvidia_device).branch + ")"
-                                   : std::string("open-source drivers")},
+        {"Graphics", graphics_summary()},
         {"Host name", host.value},
         {"User", user.value},
         {"Time zone", timezone()},
@@ -439,6 +449,9 @@ void App::start_install() {
     if (zfs_host_id.empty()) zfs_host_id = new_host_id();
     plan.zfs_host_id = zfs_host_id;
     plan.nvidia_device = nvidia_device;
+    plan.amd_gpu = gpus.amd;
+    plan.intel_gpu = gpus.intel;
+    if (!options.demo) plan.disk_modules = system_probe::disk_modules("/sys", plan.disk);
     log.clear();
     scroll = 0;
     phase = 0;

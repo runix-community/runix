@@ -73,6 +73,9 @@ struct Plan {
     std::string disk;
     std::string zfs_host_id;
     std::optional<std::uint32_t> nvidia_device;
+    bool amd_gpu = false;
+    bool intel_gpu = false;
+    std::vector<std::string> disk_modules;
 };
 
 /// What Nix reports while the system is installed.

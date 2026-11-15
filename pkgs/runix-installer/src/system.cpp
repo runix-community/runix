@@ -219,6 +219,46 @@ std::optional<std::uint32_t> find_nvidia(const std::string& pci_devices) {
     return std::nullopt;
 }
 
+Gpus find_gpus(const std::string& pci_devices) {
+    Gpus found;
+    found.nvidia = find_nvidia(pci_devices);
+    std::error_code error;
+    for (const auto& entry : fs::directory_iterator(pci_devices, error)) {
+        if (read_word(entry.path() / "class").rfind("0x03", 0) != 0) continue;
+        const std::string vendor = read_word(entry.path() / "vendor");
+        found.amd = found.amd || vendor == "0x1002";
+        found.intel = found.intel || vendor == "0x8086";
+    }
+    return found;
+}
+
+Gpus gpus(bool demo) {
+    if (demo) return {};
+    return find_gpus("/sys/bus/pci/devices");
+}
+
+std::vector<std::string> disk_modules(const std::string& sys, const std::string& disk) {
+    std::vector<std::string> modules;
+    std::error_code error;
+    const std::string name = fs::path(disk).filename().string();
+    const fs::path root = fs::path(sys);
+    fs::path device = fs::canonical(root / "block" / name / "device", error);
+    if (error) return modules;
+    const fs::path top = fs::canonical(root / "devices", error);
+    if (error) return modules;
+    for (; !device.empty() && device != top && device != device.parent_path(); device = device.parent_path()) {
+        if (!fs::is_symlink(device / "driver", error)) continue;
+        const fs::path module = fs::canonical(device / "driver" / "module", error);
+        if (error) continue;  // built into the kernel
+        const std::string module_name = module.filename().string();
+        // Built-in drivers can have a module directory too; only loadable
+        // modules have an initstate.
+        if (!fs::exists(root / "module" / module_name / "initstate", error)) continue;
+        if (std::find(modules.begin(), modules.end(), module_name) == modules.end()) modules.push_back(module_name);
+    }
+    return modules;
+}
+
 std::optional<std::uint32_t> nvidia_gpu(bool demo) {
     if (demo) return std::nullopt;
     return find_nvidia("/sys/bus/pci/devices");

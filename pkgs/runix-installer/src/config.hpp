@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace config {
 
@@ -89,6 +90,10 @@ struct Settings {
     Cpu cpu = Cpu::Other;
     /// An NVIDIA GPU's PCI device ID, for the proprietary driver.
     std::optional<std::uint32_t> nvidia_device;
+    bool amd_gpu = false;
+    bool intel_gpu = false;
+    /// Modules the root disk needs to be found at boot, from the hardware.
+    std::vector<std::string> disk_modules;
     /// Eight hex digits; the pool is created under this host ID, so the
     /// installed system imports it as its own.
     std::string zfs_host_id;
