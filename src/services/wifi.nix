@@ -22,10 +22,13 @@ let
     mkdir -p ${controlDirectory}/client ${stateDirectory}
     if [ ! -e ${configFile} ]; then
       cat > ${configFile} <<'EOF'
-    ctrl_interface=${controlDirectory}
+    ctrl_interface=DIR=${controlDirectory} GROUP=wheel
     update_config=1
     EOF
     fi
+    # Desktop shells (blxshell) join networks as the user, through the
+    # control socket: let wheel use it, also in existing configs.
+    sed -i 's|^ctrl_interface=${controlDirectory}$|ctrl_interface=DIR=${controlDirectory} GROUP=wheel|' ${configFile}
     chmod 0600 ${configFile}
   '';
   interfaceScript = ''

@@ -205,8 +205,7 @@ TEST(the_blxshell_desktops_bring_its_flake_and_greeter) {
     auto value = settings();
     value.desktop = config::Desktop::BlxshellZwwm;
     auto flake = config::flake(value);
-    CHECK(has(flake, "url = \"github:binarylinuxx/dots\";"));
-    CHECK(has(flake, "inputs.nixpkgs.follows = \"runix/nixpkgs\";"));
+    CHECK(has(flake, "inputs.blxshell.follows = \"runix/blxshell\";"));
     CHECK(has(flake, "{ blxshell, runix, ... }:"));
     CHECK(has(flake, "blxshell.runixModules.default"));
     auto text = config::configuration(value);

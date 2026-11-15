@@ -42,7 +42,6 @@ jobs:
         run: >-
           nix build --print-build-logs
           .#runit .#runix .#runix-install .#runix-installer .#runixisogen .#vm
-          .#desktop-system
 
   desktop:
     name: Desktop ${{ matrix.group }}
@@ -58,6 +57,10 @@ jobs:
         include:
           - group: wayland
             packages: ".#hyprland .#labwc .#niri .#zwwm .#shojiwm .#driftwm"
+          - group: profiles
+            packages: >-
+              .#profile-console .#profile-hyprland .#profile-labwc .#profile-niri
+              .#profile-zwwm .#profile-blxshell-zwwm .#profile-blxshell-hyprland
           - group: x11
             packages: ".#bspwm .#qtile .#sxhkd"
           - group: fetch

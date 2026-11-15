@@ -6,9 +6,14 @@
     url = "github:runix-community/runixpkgs";
     inputs.nixpkgs.follows = "nixpkgs";
   };
+  # blxshell, pinned here so installs and the cache build the same one.
+  inputs.blxshell = {
+    url = "github:binarylinuxx/dots";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
 
   outputs =
-    { self, nixpkgs, runixpkgs }:
+    { self, nixpkgs, runixpkgs, blxshell }:
     let
       systems = [
         "aarch64-linux"
@@ -106,23 +111,19 @@
               }
             ];
           };
-          # A typical desktop install: CI builds it so everything an installed
-          # desktop needs (SDDM, Weston, Hyprland, zwwm, the system itself) is
-          # in the binary cache instead of compiled during the install.
-          desktopSystem = self.lib.runixSystem {
-            inherit system;
-            modules = [
-              {
-                fileSystems."/" = {
-                  device = "/dev/disk/by-label/runix-root";
-                  fsType = "ext4";
-                };
-                runix.desktop.enable = true;
-                programs.zwwm.enable = true;
-                runix.systemServices.wifi.enable = true;
-              }
-            ];
-          };
+          # One system per installer desktop: CI builds them so what an install
+          # needs is in the binary cache instead of compiled during the install.
+          profile =
+            desktop:
+            (self.lib.runixSystem {
+              inherit system;
+              modules = [
+                blxshell.runixModules.default
+                (import ./profiles/base.nix)
+                desktop
+              ];
+            }).config.runix.build.system;
+          profiles = import ./profiles { };
           live = self.lib.runixSystem {
             inherit system;
             modules = [ { runix.iso.enable = true; } ];
@@ -152,7 +153,11 @@
         }
         // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
           inherit (vm.config.runix.build) vm;
-          desktop-system = desktopSystem.config.runix.build.system;
+        }
+        // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") (
+          nixpkgs.lib.mapAttrs' (name: desktop: nixpkgs.lib.nameValuePair "profile-${name}" (profile desktop)) profiles
+        )
+        // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
           inherit (live.config.runix.build) iso;
         }
       );

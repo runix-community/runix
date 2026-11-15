@@ -200,10 +200,8 @@ std::string flake(const Settings& settings) {
     std::string extra_arguments;
     if (with_blxshell(settings.desktop)) {
         // Built against Runix's nixpkgs, so the desktop shares its libraries.
-        inputs += std::string("  inputs.blxshell = {\n"
-                              "    url = \"") + blxshell_input + "\";\n"
-                  "    inputs.nixpkgs.follows = \"runix/nixpkgs\";\n"
-                  "  };\n";
+        // Runix's own pin, which its binary cache has built.
+        inputs += "  inputs.blxshell.follows = \"runix/blxshell\";\n";
         extra_arguments = "blxshell, ";
         extra_modules = "          blxshell.runixModules.default\n";
     }

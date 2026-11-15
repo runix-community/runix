@@ -1,5 +1,26 @@
 {
   "nodes": {
+    "blxshell": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "vw": "vw"
+      },
+      "locked": {
+        "lastModified": 1794768949,
+        "narHash": "sha256-v3A/8MPjRgH5D2tIEVJ5+uKDwja0wylufnZ0/VvAcY0=",
+        "owner": "binarylinuxx",
+        "repo": "dots",
+        "rev": "fe2578d252a617ff98b23cbc0673bcec2767d567",
+        "type": "github"
+      },
+      "original": {
+        "owner": "binarylinuxx",
+        "repo": "dots",
+        "type": "github"
+      }
+    },
     "driftwm": {
       "flake": false,
       "locked": {
@@ -35,6 +56,7 @@
     },
     "root": {
       "inputs": {
+        "blxshell": "blxshell",
         "nixpkgs": "nixpkgs",
         "runixpkgs": "runixpkgs"
       }
@@ -46,7 +68,7 @@
           "nixpkgs"
         ],
         "shojiwm": "shojiwm",
-        "zwwm": "zwwm"
+        "zwwm": "zwwm_2"
       },
       "locked": {
         "lastModified": 1794721736,
@@ -79,7 +101,45 @@
         "type": "github"
       }
     },
+    "vw": {
+      "inputs": {
+        "nixpkgs": [
+          "blxshell",
+          "nixpkgs"
+        ],
+        "zwwm": "zwwm"
+      },
+      "locked": {
+        "lastModified": 1794563576,
+        "narHash": "sha256-G42y7UWIGOH2IcC97SKQpNnrLeQkMQHfEjfhnQjIAxE=",
+        "owner": "binarylinuxx",
+        "repo": "vw",
+        "rev": "6892f4eeb6934ff2500fb16cb1314cf2152cf0a6",
+        "type": "github"
+      },
+      "original": {
+        "owner": "binarylinuxx",
+        "repo": "vw",
+        "type": "github"
+      }
+    },
     "zwwm": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1794476273,
+        "narHash": "sha256-4bbENo88thjbZN0AUIunzlckDwbkMR3SVH5CPNymyEs=",
+        "owner": "zwwmWM",
+        "repo": "zwwm",
+        "rev": "1912b91d325e039a21b1c17f87ed16b26d755689",
+        "type": "github"
+      },
+      "original": {
+        "owner": "zwwmWM",
+        "repo": "zwwm",
+        "type": "github"
+      }
+    },
+    "zwwm_2": {
       "flake": false,
       "locked": {
         "lastModified": 1790616671,
