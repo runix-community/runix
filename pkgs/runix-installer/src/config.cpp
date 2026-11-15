@@ -219,7 +219,8 @@ std::string flake(const Settings& settings) {
         keys += std::string("      \"") + cachyos_key + "\"\n";
         // Its nixpkgs is not overridden: the cached kernels were built with it.
         inputs += std::string("  inputs.nix-cachyos-kernel.url = \"") + cachyos_input + "\";\n";
-        arguments = "{ runix, nix-cachyos-kernel, ... }";
+        // Added to the list, which may already name blxshell.
+        arguments.insert(arguments.find("runix,"), "nix-cachyos-kernel, ");
         special = "        specialArgs = { inherit nix-cachyos-kernel; };\n";
     } else {
         substituters = " " + substituters + " ";
