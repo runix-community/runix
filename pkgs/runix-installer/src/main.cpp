@@ -9,6 +9,7 @@
 #include <ncurses.h>
 #include <string>
 #include <optional>
+#include <sys/ioctl.h>
 #include <unistd.h>
 #include <cwchar>
 
@@ -143,10 +144,22 @@ std::string run_external(const External& external) {
     return "";
 }
 
+/// The console changes size under the installer when a GPU driver loads late
+/// and the console font is set again; the resize signal does not always
+/// reach curses. Checks the real size and redraws everything when it moved.
+void follow_terminal_size() {
+    winsize size{};
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &size) != 0 || size.ws_row == 0 || size.ws_col == 0) return;
+    if (size.ws_row == LINES && size.ws_col == COLS) return;
+    resizeterm(size.ws_row, size.ws_col);
+    clearok(curscr, TRUE);
+}
+
 Exit run(Options options) {
     auto queue = std::make_shared<Queue>();
     App app(std::move(options), queue);
     while (true) {
+        follow_terminal_size();
         ui::draw(app);
         // Snake moves on a short timer; the rest of the installer needs no hurry.
         timeout(app.playing() ? 20 : 100);

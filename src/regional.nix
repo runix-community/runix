@@ -25,6 +25,31 @@ let
   colorChannel =
     offset: lib.concatMapStringsSep "," (color: toString (hexValue (builtins.substring offset 2 color))) config.console.colors;
 
+  # Sets console.font on the consoles people log in on. Activation runs it,
+  # and mdevd again whenever a framebuffer appears: a GPU driver loading after
+  # boot moves the console onto its framebuffer and resets the font.
+  consoleFontScript = pkgs.writeShellScript "runix-console-font" ''
+    font=${lib.escapeShellArg config.console.font}
+    case "$font" in
+      /*) ;;
+      *)
+        dir=${consoleFonts}/share/consolefonts
+        for candidate in "$dir/$font" "$dir/$font.psfu" "$dir/$font.psf" "$dir/$font.psfu.gz" "$dir/$font.psf.gz"; do
+          if [ -e "$candidate" ]; then font=$candidate; break; fi
+        done
+        ;;
+    esac
+    if [ ! -e "$font" ]; then
+      echo "runix: console font not found: $font" >&2
+      exit 0
+    fi
+    # From mdevd: give the console a moment to move to the new framebuffer.
+    [ -z "''${MDEV:-}" ] || ${pkgs.coreutils}/bin/sleep 1
+    for tty in /dev/tty[1-6]; do
+      [ -c "$tty" ] || continue
+      ${pkgs.kbd}/bin/setfont -C "$tty" "$font" 2>/dev/null || true
+    done
+  '';
   consoleFonts = pkgs.buildEnv {
     name = "runix-console-fonts";
     paths = config.console.packages;
@@ -183,6 +208,9 @@ in
     # The framebuffer console normally takes over only once something is
     # printed, and that resets any font set before it. Take over at boot, so
     # the font set during activation stays.
+    services.mdevd.rules = lib.mkIf (config.console.font != null) ''
+      -SUBSYSTEM=graphics;fb[0-9]+ 0:0 660 @${consoleFontScript}
+    '';
     runix.kernel.parameters =
       lib.optional (config.console.font != null) "fbcon=nodefer"
       ++ lib.optionals (config.console.colors != null) [
@@ -198,27 +226,7 @@ in
     ];
     runix.activationScripts = lib.optional (!config.runix.virtualMachine.enable) ''
       ${pkgs.kbd}/bin/loadkeys ${lib.escapeShellArg config.console.keyMap} || true
-      ${lib.optionalString (config.console.font != null) ''
-        font=${lib.escapeShellArg config.console.font}
-        case "$font" in
-          /*) ;;
-          *)
-            dir=${consoleFonts}/share/consolefonts
-            for candidate in "$dir/$font" "$dir/$font.psfu" "$dir/$font.psf" "$dir/$font.psfu.gz" "$dir/$font.psf.gz"; do
-              if [ -e "$candidate" ]; then font=$candidate; break; fi
-            done
-            ;;
-        esac
-        if [ -e "$font" ]; then
-          # Each console has its own font; set it on the ones that log in.
-          for tty in /dev/tty[1-6]; do
-            [ -c "$tty" ] || continue
-            ${pkgs.kbd}/bin/setfont -C "$tty" "$font" 2>/dev/null || true
-          done
-        else
-          echo "runix: console font not found: $font" >&2
-        fi
-      ''}
+      ${lib.optionalString (config.console.font != null) "${consoleFontScript}"}
       ${lib.optionalString (!config.console.bell.enable) ''
         for tty in /dev/tty[1-9]*; do
           [ -c "$tty" ] || continue
