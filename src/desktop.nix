@@ -101,6 +101,11 @@ in
     enable = lib.mkEnableOption "the Runix Wayland desktop stack";
 
     sddm = {
+      enable = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Whether SDDM is the login screen. Turn it off for another one, such as blxshell's greeter; then SDDM is not built at all.";
+      };
       package = lib.mkOption {
         type = lib.types.package;
         default = desktopPackages.sddm;
@@ -166,7 +171,7 @@ in
       }
     ];
 
-    runix.groups = {
+    runix.groups = lib.mkIf cfg.sddm.enable {
       sddm.gid = 175;
     };
     programs.hyprland.enable = lib.mkDefault true;
@@ -188,7 +193,7 @@ in
       upower.enable = lib.mkDefault true;
       powerProfiles.enable = lib.mkDefault true;
     };
-    runix.users = {
+    runix.users = lib.mkIf cfg.sddm.enable {
       sddm = {
         uid = 175;
         gid = 175;
@@ -205,11 +210,14 @@ in
     hardware.graphics.enable = lib.mkDefault true;
     hardware.input.enable = lib.mkDefault true;
     runix.packages = [
-      cfg.sddm.package
       pkgs.adwaita-icon-theme
       pkgs.dbus
-      desktopPackages.weston
       pkgs.xkeyboard_config
+    ]
+    # Weston only runs SDDM's greeter.
+    ++ lib.optionals cfg.sddm.enable [
+      cfg.sddm.package
+      desktopPackages.weston
     ]
     ++ lib.optional programs.hyprland.enable sessionPackage
     ++ lib.optionals cfg.portals.enable portalPackages;
@@ -219,18 +227,19 @@ in
       XKB_CONFIG_ROOT = "${pkgs.xkeyboard_config}/share/X11/xkb";
       XDG_DATA_DIRS = "/run/current-system/sw/share";
     };
-    runix.systemServices.dbusPackages = [
-      cfg.sddm.package
-    ]
+    runix.systemServices.dbusPackages = lib.optional cfg.sddm.enable cfg.sddm.package
     ++ lib.optional programs.flatpak.enable programs.flatpak.package;
     runix.preparationScripts = [
       ''
-        mkdir -p /etc/pam.d /etc/sddm.conf.d /var/lib/flatpak /var/lib/sddm
-        ${pkgs.coreutils}/bin/install -d -m 0700 -o sddm -g sddm /run/sddm
+        mkdir -p /etc/pam.d /var/lib/flatpak
         ln -sfn ${pamLogin} /etc/pam.d/login
-        ln -sfn ${pamLogin} /etc/pam.d/sddm
-        ln -sfn ${pamGreeter} /etc/pam.d/sddm-greeter
-        ln -sfn ${sddmConfig} /etc/sddm.conf.d/00-runix.conf
+        ${lib.optionalString cfg.sddm.enable ''
+          mkdir -p /etc/sddm.conf.d /var/lib/sddm
+          ${pkgs.coreutils}/bin/install -d -m 0700 -o sddm -g sddm /run/sddm
+          ln -sfn ${pamLogin} /etc/pam.d/sddm
+          ln -sfn ${pamGreeter} /etc/pam.d/sddm-greeter
+          ln -sfn ${sddmConfig} /etc/sddm.conf.d/00-runix.conf
+        ''}
       ''
     ];
 
@@ -243,7 +252,7 @@ in
       ''
     ];
 
-    runix.services = {
+    runix.services = lib.mkIf cfg.sddm.enable {
       sddm = {
         command = "${cfg.sddm.package}/bin/sddm --config /etc/sddm.conf.d/00-runix.conf";
         environment.XDG_RUNTIME_DIR = "/run/sddm";
