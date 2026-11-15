@@ -94,6 +94,7 @@ App::App(Options options_, std::shared_ptr<Queue> queue)
     zones = system_probe::timezones(options.zoneinfo);
     wireless = system_probe::wireless_available(options.demo);
     boot_mode = options.demo ? config::BootMode::Efi : system_probe::boot_mode();
+    nvidia_device = system_probe::nvidia_gpu(options.demo);
 }
 
 App::~App() {
@@ -157,6 +158,9 @@ std::vector<std::pair<std::string, std::string>> App::summary() const {
         {"Kernel", config::name(kernel())},
         {"Filesystem", config::name(filesystem())},
         {"Boot mode", config::name(boot_mode)},
+        {"Graphics", nvidia_device ? std::string("NVIDIA, proprietary driver (") +
+                                         config::nvidia_driver(*nvidia_device).branch + ")"
+                                   : std::string("open-source drivers")},
         {"Host name", host.value},
         {"User", user.value},
         {"Time zone", timezone()},
@@ -434,6 +438,7 @@ void App::start_install() {
     plan.disk = chosen->path;
     if (zfs_host_id.empty()) zfs_host_id = new_host_id();
     plan.zfs_host_id = zfs_host_id;
+    plan.nvidia_device = nvidia_device;
     log.clear();
     scroll = 0;
     phase = 0;

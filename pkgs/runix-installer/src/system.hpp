@@ -60,6 +60,10 @@ std::vector<std::string> timezones(const std::string& zoneinfo);
 std::string find_zoneinfo(const std::vector<std::optional<std::string>>& candidates);
 
 config::BootMode boot_mode();
+/// The PCI device ID of the first NVIDIA display controller under
+/// `pci_devices` (normally /sys/bus/pci/devices), if there is one.
+std::optional<std::uint32_t> find_nvidia(const std::string& pci_devices);
+std::optional<std::uint32_t> nvidia_gpu(bool demo);
 config::Cpu cpu_vendor();
 
 }  // namespace system_probe

@@ -195,6 +195,35 @@ std::string find_zoneinfo(const std::vector<std::optional<std::string>>& candida
     return "/usr/share/zoneinfo";
 }
 
+static std::string read_word(const fs::path& path) {
+    std::ifstream file(path);
+    std::string word;
+    file >> word;
+    return word;
+}
+
+std::optional<std::uint32_t> find_nvidia(const std::string& pci_devices) {
+    std::error_code error;
+    std::vector<fs::path> devices;
+    for (const auto& entry : fs::directory_iterator(pci_devices, error)) devices.push_back(entry.path());
+    std::sort(devices.begin(), devices.end());
+    for (const auto& device : devices) {
+        // Vendor 0x10de is NVIDIA; class 0x03xxxx is a display controller.
+        if (read_word(device / "vendor") != "0x10de") continue;
+        if (read_word(device / "class").rfind("0x03", 0) != 0) continue;
+        try {
+            return static_cast<std::uint32_t>(std::stoul(read_word(device / "device"), nullptr, 16));
+        } catch (const std::exception&) {
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<std::uint32_t> nvidia_gpu(bool demo) {
+    if (demo) return std::nullopt;
+    return find_nvidia("/sys/bus/pci/devices");
+}
+
 config::BootMode boot_mode() {
     std::error_code error;
     return fs::is_directory("/sys/firmware/efi", error) ? config::BootMode::Efi : config::BootMode::Bios;

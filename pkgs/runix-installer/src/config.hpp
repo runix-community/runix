@@ -4,6 +4,8 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
+#include <optional>
 #include <string>
 
 namespace config {
@@ -61,6 +63,15 @@ inline constexpr const char* cachyos_key = "lantian:WVGO7vsRMSEN+h7Lp7kv6SAmrkEX
 
 enum class Cpu { Amd, Intel, Other };
 
+/// The NVIDIA driver for a GPU, chosen by its PCI device ID: the 590 and later
+/// drivers start at Turing, and only Turing and newer have open modules.
+struct NvidiaDriver {
+    const char* branch;  // an attribute of nvidiaPackages
+    bool open;
+    const char* generation;
+};
+NvidiaDriver nvidia_driver(std::uint32_t device);
+
 struct Settings {
     std::string flake;
     std::string host;
@@ -76,6 +87,8 @@ struct Settings {
     Kernel kernel = Kernel::Default;
     std::string disk;
     Cpu cpu = Cpu::Other;
+    /// An NVIDIA GPU's PCI device ID, for the proprietary driver.
+    std::optional<std::uint32_t> nvidia_device;
     /// Eight hex digits; the pool is created under this host ID, so the
     /// installed system imports it as its own.
     std::string zfs_host_id;

@@ -197,6 +197,8 @@ public:
     ListState connection_list;
     Input confirmation;
     config::BootMode boot_mode = config::BootMode::Efi;
+    /// An NVIDIA GPU found on this machine, which gets the proprietary driver.
+    std::optional<std::uint32_t> nvidia_device;
 
     std::size_t phase = 0;
     bool phase_done = false;

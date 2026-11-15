@@ -294,6 +294,7 @@ void install(const Plan& plan, Runner& runner) {
     if (!zfs) settings.root_uuid = capture_trimmed({"blkid", "-s", "UUID", "-o", "value", root});
     settings.root_fs = plan.root_fs;
     settings.zfs_host_id = plan.zfs_host_id;
+    settings.nvidia_device = plan.nvidia_device;
     settings.boot_uuid = capture_trimmed({"blkid", "-s", "UUID", "-o", "value", boot});
     settings.boot_mode = plan.boot_mode;
     settings.loader = plan.loader;

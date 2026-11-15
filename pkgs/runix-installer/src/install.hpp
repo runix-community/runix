@@ -72,6 +72,7 @@ struct Plan {
     config::Kernel kernel = config::Kernel::Default;
     std::string disk;
     std::string zfs_host_id;
+    std::optional<std::uint32_t> nvidia_device;
 };
 
 /// What Nix reports while the system is installed.
