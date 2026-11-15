@@ -106,6 +106,23 @@
               }
             ];
           };
+          # A typical desktop install: CI builds it so everything an installed
+          # desktop needs (SDDM, Weston, Hyprland, zwwm, the system itself) is
+          # in the binary cache instead of compiled during the install.
+          desktopSystem = self.lib.runixSystem {
+            inherit system;
+            modules = [
+              {
+                fileSystems."/" = {
+                  device = "/dev/disk/by-label/runix-root";
+                  fsType = "ext4";
+                };
+                runix.desktop.enable = true;
+                programs.zwwm.enable = true;
+                runix.systemServices.wifi.enable = true;
+              }
+            ];
+          };
           live = self.lib.runixSystem {
             inherit system;
             modules = [ { runix.iso.enable = true; } ];
@@ -135,6 +152,7 @@
         }
         // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
           inherit (vm.config.runix.build) vm;
+          desktop-system = desktopSystem.config.runix.build.system;
           inherit (live.config.runix.build) iso;
         }
       );
