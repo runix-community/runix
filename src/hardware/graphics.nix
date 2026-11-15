@@ -82,6 +82,10 @@ in
         ''}
       ''
     ];
+    # Modules mdevd's modalias rule would not load by itself, such as nvidia_drm.
+    runix.activationScripts = lib.optional (cfg.kernelModules != [ ]) ''
+      ${pkgs.kmod}/bin/modprobe -a ${lib.escapeShellArgs cfg.kernelModules} || true
+    '';
     runix.build.graphicsDrivers = drivers;
   };
 }

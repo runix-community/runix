@@ -15,12 +15,13 @@
         "x86_64-linux"
       ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
-      mkPkgs =
-        system:
+      mkPkgsWith =
+        system: config:
         import nixpkgs {
-          inherit system;
+          inherit system config;
           overlays = [ runixpkgs.overlays.default ];
         };
+      mkPkgs = system: mkPkgsWith system { };
     in
     {
       overlays.default = runixpkgs.overlays.default;
@@ -269,13 +270,16 @@
       templates.default = self.templates.service;
 
       lib.mkPkgs = mkPkgs;
+      lib.mkPkgsWith = mkPkgsWith;
 
       lib.runixSystem =
         {
           system,
           modules ? [ ],
           specialArgs ? { },
-          pkgs ? mkPkgs system,
+          # nixpkgs' config, such as allowUnfreePredicate for the NVIDIA driver.
+          nixpkgsConfig ? { },
+          pkgs ? mkPkgsWith system nixpkgsConfig,
         }:
         let
           evaluated = nixpkgs.lib.evalModules {

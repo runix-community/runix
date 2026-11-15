@@ -8,6 +8,7 @@
     ./i2c.nix
     ./input.nix
     ./intel-graphics.nix
+    ./nvidia.nix
     ./uinput.nix
   ];
 }
