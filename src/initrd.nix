@@ -145,16 +145,26 @@ let
       ''
     else if cfg.zfs.enable then
       let
-        pool = builtins.head (lib.splitString "/" root.device);
-        force = lib.optionalString cfg.zfs.forceImportRoot "-f";
+        pool = lib.escapeShellArg (builtins.head (lib.splitString "/" root.device));
       in
       ''
         zgenhostid -f ${lib.escapeShellArg cfg.zfs.hostId}
         modprobe zfs
+        force=${lib.optionalString cfg.zfs.forceImportRoot "-f"}
+        for option in $(cat /proc/cmdline); do
+          [ "$option" != zfs_force=1 ] || force=-f
+        done
         tries=0
-        until zpool list -H ${lib.escapeShellArg pool} >/dev/null 2>&1; do
-          if zpool import -N -d ${lib.escapeShellArg cfg.zfs.devNodes} ${force} ${lib.escapeShellArg pool}; then
+        until zpool list -H ${pool} >/dev/null 2>&1; do
+          if zpool import -N -d ${lib.escapeShellArg cfg.zfs.devNodes} $force ${pool} 2>/run/zpool-import.err; then
             break
+          fi
+          cat /run/zpool-import.err >/dev/console
+          # A pool last used under another host ID never imports by waiting.
+          if grep -q "in use from another system" /run/zpool-import.err; then
+            echo "runix: ${pool} was last used by another system (a different host ID)." >/dev/console
+            echo "runix: boot once with zfs_force=1 on the kernel command line to import it anyway." >/dev/console
+            exit 1
           fi
           tries=$((tries + 1))
           if [ "$tries" -ge ${toString cfg.initrd.rootTimeout} ]; then
@@ -163,7 +173,13 @@ let
           fi
           sleep 1
         done
-        mount -t zfs -o "$root_options" "$root_device" /sysroot
+        # Plain mount only accepts datasets with mountpoint=legacy; zfsutil
+        # mounts the others, whatever their mountpoint says.
+        if [ "$(zfs get -H -o value mountpoint "$root_device")" = legacy ]; then
+          mount -t zfs -o "$root_options" "$root_device" /sysroot
+        else
+          mount -t zfs -o "$root_options,zfsutil" "$root_device" /sysroot
+        fi
         ${mountEarlyFileSystems}
       ''
     else

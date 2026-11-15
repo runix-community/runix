@@ -47,8 +47,15 @@ in
     };
     forceImportRoot = lib.mkOption {
       type = lib.types.bool;
-      default = false;
-      description = "Whether to force import the root pool after an unclean export.";
+      default = true;
+      description = ''
+        Whether to force-import the root pool. A pool that was not exported
+        cleanly, after a crash or when it was created from another system such
+        as an installer, is marked with that system's host ID and otherwise
+        refuses to import. Turn this off only when another machine could have
+        the same pool imported, as with shared storage; then booting once with
+        zfs_force=1 on the kernel command line forces the import.
+      '';
     };
     rootPool = lib.mkOption {
       type = lib.types.str;
