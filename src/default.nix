@@ -14,7 +14,6 @@
     ./hardware
     ./mdevd.nix
     ./regional.nix
-    ./kmscon.nix
     ./shells.nix
     ./session-services.nix
     ./desktop.nix
