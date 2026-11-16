@@ -152,6 +152,7 @@ let
   '';
   pamEnvironment = pkgs.writeText "runix-pam-env" ''
     PATH DEFAULT=/run/wrappers/bin:/run/current-system/sw/bin:/run/current-system/sw/sbin
+    XDG_DATA_DIRS DEFAULT=/run/current-system/sw/share
   '';
   unixChkpwdWrapperSource = pkgs.writeText "runix-unix-chkpwd-wrapper.c" ''
     #include <stdio.h>

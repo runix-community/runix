@@ -14,6 +14,7 @@
     ./hardware
     ./mdevd.nix
     ./regional.nix
+    ./shells.nix
     ./session-services.nix
     ./desktop.nix
     ./zfs.nix
