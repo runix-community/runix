@@ -22,13 +22,18 @@ let
     mkdir -p ${controlDirectory}/client ${stateDirectory}
     if [ ! -e ${configFile} ]; then
       cat > ${configFile} <<'EOF'
-    ctrl_interface=DIR=${controlDirectory} GROUP=wheel
+    ctrl_interface=DIR=${controlDirectory}
     update_config=1
     EOF
     fi
-    # Desktop shells (blxshell) join networks as the user, through the
-    # control socket: let wheel use it, also in existing configs.
-    ${pkgs.gnused}/bin/sed -i 's|^ctrl_interface=${controlDirectory}$|ctrl_interface=DIR=${controlDirectory} GROUP=wheel|' ${configFile} || true
+    # Desktop shells (blxshell) join networks as the user through the control
+    # socket, so wheel may use it, but only where a wheel group exists:
+    # wpa_supplicant will not start with a group it cannot find.
+    control="DIR=${controlDirectory}"
+    if ${pkgs.gnugrep}/bin/grep '^wheel:' /etc/group >/dev/null 2>&1; then
+      control="$control GROUP=wheel"
+    fi
+    ${pkgs.gnused}/bin/sed -i "s|^ctrl_interface=.*|ctrl_interface=$control|" ${configFile} || true
     chmod 0600 ${configFile}
   '';
   interfaceScript = ''
