@@ -8,11 +8,11 @@
         "vw": "vw"
       },
       "locked": {
-        "lastModified": 1794853480,
-        "narHash": "sha256-maf7osKbxZqPrKZxJ/tXDHsS5DAWxgvWrqOtVkz21Zg=",
+        "lastModified": 1794853810,
+        "narHash": "sha256-lsNIAn5lAvhOrhMfj7koU0xunWxo9g7mBgwRh1ucRyQ=",
         "owner": "binarylinuxx",
         "repo": "dots",
-        "rev": "a41c890e461dd0261e19492dcbf72428668551b6",
+        "rev": "de20517f68f13526e63bf6d7d148661bc4e4ce34",
         "type": "github"
       },
       "original": {
