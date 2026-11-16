@@ -206,6 +206,23 @@ let
           fi
           sleep 0.1
         done
+        # After a crash or power cut: repair what is safe to repair before
+        # mounting. e2fsck -p answers nothing interactively.
+        case "$root_fs_type" in
+          ext2 | ext3 | ext4)
+            fsck_status=0
+            e2fsck -p "$root_device" >/dev/console 2>&1 || fsck_status=$?
+            if [ $((fsck_status & 2)) -ne 0 ]; then
+              echo "runix: the root filesystem was repaired; rebooting" >/dev/console
+              sync
+              reboot -f
+            fi
+            if [ $((fsck_status & 4)) -ne 0 ]; then
+              echo "runix: the root filesystem has errors e2fsck -p cannot fix;" \
+                "booting anyway: run e2fsck -f on it from the ISO" >/dev/console
+            fi
+            ;;
+        esac
         mount -t "$root_fs_type" -o "$root_options" "$root_device" /sysroot
         ${mountEarlyFileSystems}
       '';

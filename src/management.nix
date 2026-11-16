@@ -68,6 +68,9 @@ in
     trusted-users = [ "root" ];
     allowed-users = [ "*" ];
     sandbox = lib.mkDefault true;
+    # Store files reach the disk before Nix registers them: a power cut can
+    # no longer leave empty .drv files or links that make the store unusable.
+    fsync-store-paths = lib.mkDefault true;
     # Setting substituters replaces Nix's built-in default, so it is listed.
     substituters = [
       "https://cache.nixos.org"

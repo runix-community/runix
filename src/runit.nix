@@ -224,6 +224,16 @@ let
       ${cfg.runit.package}/bin/sv exit "$service" || true
     done
     ${lib.concatStringsSep "\n" cfg.shutdownScripts}
+    # Nothing may still be writing when the power goes: end every process
+    # left (sessions, programs), then unmount, or at least make read-only,
+    # every filesystem. runit powers off once this returns.
+    ${pkgs.util-linux}/bin/kill -TERM -1 2>/dev/null || true
+    ${pkgs.coreutils}/bin/sleep 2
+    ${pkgs.util-linux}/bin/kill -KILL -1 2>/dev/null || true
+    ${pkgs.coreutils}/bin/sync
+    ${pkgs.util-linux}/bin/swapoff -a 2>/dev/null || true
+    ${pkgs.util-linux}/bin/umount -a -r -t noproc,sysfs,devtmpfs,devpts,tmpfs,cgroup2 2>/dev/null || true
+    ${pkgs.util-linux}/bin/mount -o remount,ro / 2>/dev/null || true
     ${pkgs.coreutils}/bin/sync
   '';
 
