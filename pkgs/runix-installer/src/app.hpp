@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "config.hpp"
+#include "i18n.hpp"
 #include "install.hpp"
 #include "games.hpp"
 #include "system.hpp"
@@ -50,10 +51,10 @@ inline constexpr std::array<Screen, 13> wizard{
 const char* title(Screen screen);
 
 inline constexpr std::array<const char*, 4> done_actions{
-    "Reboot now",
-    "Power off",
-    "Open a shell in the installed system (chroot)",
-    "Exit to shell",
+    N_("Reboot now"),
+    N_("Power off"),
+    N_("Open a shell in the installed system (chroot)"),
+    N_("Exit to shell"),
 };
 
 enum class Exit { Shell, Reboot, Poweroff };
@@ -142,7 +143,26 @@ struct Options {
     std::string zoneinfo;
     /// Where a failed installation's log is uploaded, when the user asks.
     std::string paste_url;
+    /// Preselected choices, from the settings file; empty keeps the
+    /// installer's own. Choices use config::id names.
+    struct Defaults {
+        std::string language;
+        std::string host;
+        std::string user;
+        std::string timezone;
+        std::string bootloader;
+        std::string kernel;
+        std::string filesystem;
+        std::string desktop;
+        std::string connection;
+        std::string extra_configuration;
+    } defaults;
 };
+
+/// Reads the installer's settings file (JSON, see Options::Defaults); the
+/// keys are language, host, user, timezone, bootloader, kernel, filesystem,
+/// desktop, connection and extraConfiguration. Returns why it could not.
+std::string read_defaults(const std::string& text, Options::Defaults& defaults);
 
 class App {
 public:
@@ -272,6 +292,8 @@ private:
     Clock::time_point last_update_ = Clock::now();
     std::vector<int> best_;
 
+    void apply_defaults();
+    void cycle_language();
     void on_games_key(const Key& key);
     void start_game(std::size_t index);
     void close_game();

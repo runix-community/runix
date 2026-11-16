@@ -9,7 +9,7 @@ CXXFLAGS ?= -O2 -g
 CXXFLAGS += -std=c++20 -Wall -Wextra -Wno-missing-field-initializers -DNCURSES_WIDECHAR=1 $(NCURSES_CFLAGS)
 LDLIBS += $(NCURSES_LIBS) -pthread
 
-CORE := src/json.cpp src/util.cpp src/nixlog.cpp src/config.cpp src/process.cpp \
+CORE := src/json.cpp src/i18n.cpp src/util.cpp src/nixlog.cpp src/config.cpp src/process.cpp \
 	src/system.cpp src/install.cpp src/report.cpp src/snake.cpp src/xpbd.cpp src/games.cpp src/fetch.cpp src/bricks.cpp src/app.cpp src/ui.cpp
 CORE_OBJECTS := $(CORE:.cpp=.o)
 

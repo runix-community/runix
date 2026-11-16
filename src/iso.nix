@@ -31,6 +31,7 @@ let
     runix-install = pkgs.callPackage ../pkgs/runix-install { };
     flakeUrl = iso.installerFlake;
     logPasteUrl = iso.logPasteUrl;
+    inherit (iso.installer) translations language settings;
   };
 
   session = pkgs.writeShellScript "runix-live-session" ''
@@ -237,6 +238,105 @@ in
       type = lib.types.package;
       default = pkgs.limine.override { enableAll = true; };
       description = "Limine package providing the BIOS and UEFI CD boot files.";
+    };
+
+    installer = {
+      language = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        example = "de";
+        description = ''
+          The language the installer starts in, by catalog code. Users can
+          still switch on the welcome screen. Null starts in English.
+        '';
+      };
+      translations = lib.mkOption {
+        type = lib.types.attrsOf (lib.types.either lib.types.path lib.types.attrs);
+        default = { };
+        example = lib.literalExpression ''
+          {
+            de = ./installer-de.json;
+            nl = {
+              language = "Nederlands";
+              strings."Welcome" = "Welkom";
+            };
+          }
+        '';
+        description = ''
+          Translation catalogs for the installer, by language code: a JSON
+          file or the catalog itself. A catalog maps the installer's English
+          text to the translation, with "{}" where a value goes; start from
+          share/runix-installer/catalog-template.json in the installer
+          package. Text left out stays English.
+        '';
+      };
+      settings =
+        let
+          choice =
+            values: description:
+            lib.mkOption {
+              type = lib.types.nullOr (lib.types.enum values);
+              default = null;
+              inherit description;
+            };
+          text =
+            description:
+            lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              inherit description;
+            };
+        in
+        lib.mkOption {
+          default = { };
+          description = ''
+            Choices the installer starts with, so a tuned ISO needs fewer
+            keystrokes; every one can still be changed while installing.
+          '';
+          type = lib.types.submodule {
+            options = {
+              host = text "The host name.";
+              user = text "The user name.";
+              timezone = text "The time zone, like Europe/Berlin.";
+              bootloader = choice [ "limine" "grub" ] "The boot loader.";
+              kernel = choice [
+                "default"
+                "latest"
+                "lts-6.12"
+                "zen"
+                "xanmod"
+                "cachyos"
+                "cachyos-lts"
+                "cachyos-bore"
+              ] "The kernel.";
+              filesystem = choice [ "ext4" "btrfs" "zfs" ] "The root filesystem.";
+              desktop = choice [
+                "none"
+                "blxshell-zwwm"
+                "blxshell-hyprland"
+                "hyprland"
+                "labwc"
+                "niri"
+                "zwwm"
+                "shojiwm"
+                "driftwm"
+              ] "The desktop.";
+              connection = choice [ "wifi" "wired" ] "How the installed system connects.";
+              extraConfiguration = lib.mkOption {
+                type = lib.types.lines;
+                default = "";
+                example = ''
+                  programs.git.enable = true;
+                  runix.packages = [ pkgs.htop ];
+                '';
+                description = ''
+                  Nix added to every installed system's configuration.nix, inside
+                  its module (pkgs, lib and config are in scope).
+                '';
+              };
+            };
+          };
+        };
     };
   };
 

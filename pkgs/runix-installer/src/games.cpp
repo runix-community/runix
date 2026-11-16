@@ -1,4 +1,5 @@
 #include "games.hpp"
+#include "i18n.hpp"
 
 #include <algorithm>
 
@@ -98,12 +99,12 @@ public:
             frame.at(point.x * 2 + 1, point.y) = cell;
             head = false;
         }
-        frame.status = "score " + std::to_string(game_.score()) + "   each package Nix finishes drops a pellet";
+        frame.status = i18n::format("score {}", {std::to_string(game_.score())}) + "   " + tr("each package Nix finishes drops a pellet");
         if (game_.won()) {
-            frame.banner = " The board is full. You win! ";
+            frame.banner = " " + tr("The board is full. You win!") + " ";
             frame.banner_role = Role::Accent;
         } else if (game_.over()) {
-            frame.banner = " Game over · r to play again ";
+            frame.banner = " " + tr("Game over · r to play again") + " ";
             frame.banner_role = Role::Error;
         }
         return frame;
@@ -114,8 +115,8 @@ public:
     void restart() override { game_.restart(); }
 
     std::vector<std::pair<std::string, std::string>> hints() const override {
-        if (game_.over()) return {{"r", "play again"}, {"esc", "games"}};
-        return {{"arrows", "steer"}, {"esc", "games"}};
+        if (game_.over()) return {{"r", N_("play again")}, {"esc", N_("games")}};
+        return {{"arrows", N_("steer")}, {"esc", N_("games")}};
     }
 
 private:
@@ -132,9 +133,9 @@ std::unique_ptr<Game> make(int width, int height, std::uint32_t seed) {
 
 const std::vector<Entry>& catalog() {
     static const std::vector<Entry> entries{
-        {"Snake", "eat, grow, and stay off the walls", make<Snake>},
-        {"Fetch", "catch the packages Nix is installing, let broken ones fall", make<Fetch>},
-        {"Bricks", "break the wall; real 2D physics, debris and all", make<Bricks>},
+        {N_("Snake"), N_("eat, grow, and stay off the walls"), make<Snake>},
+        {N_("Fetch"), N_("catch the packages Nix is installing, let broken ones fall"), make<Fetch>},
+        {N_("Bricks"), N_("break the wall; real 2D physics, debris and all"), make<Bricks>},
     };
     return entries;
 }

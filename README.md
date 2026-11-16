@@ -93,6 +93,42 @@ screens since the 1980s. In an operating system installer they are rare. In
 and the request was closed as WONTFIX, the reasoning being that an OS
 installation is not a gaming console. Runix respectfully disagrees.
 
+### Your own installer ISO
+
+The installer speaks other languages from JSON catalogs, and an ISO can start
+it with your choices already made. In a flake host with `runix.iso.enable = true`:
+
+```nix
+runix.iso.installer = {
+  language = "de";
+  translations.de = ./installer-de.json;
+  settings = {
+    timezone = "Europe/Berlin";
+    kernel = "cachyos";
+    desktop = "blxshell-zwwm";
+    extraConfiguration = ''
+      runix.packages = [ pkgs.htop ];
+    '';
+  };
+};
+```
+
+Then build it with `runixisogen --flake .#myiso`. Every choice can still be
+changed while installing, and `l` on the welcome screen switches language.
+
+A catalog maps the installer's English text to yours, with `{}` where a value
+goes; text you leave out stays English:
+
+```json
+{ "language": "Deutsch", "strings": { "Welcome": "Willkommen", "Joining {}...": "Verbinde mit {}..." } }
+```
+
+Start from [`catalog-template.json`](pkgs/runix-installer/catalog-template.json),
+which lists every string. Catalogs placed in `pkgs/runix-installer/translations/`
+ship with every ISO. The installer runs on the Linux console, whose font
+covers few scripts: check that your language shows before shipping it, and
+set `console.font` if it does not.
+
 ## Package channel
 
 Runix includes [runixpkgs](https://github.com/runix-community/runixpkgs) by

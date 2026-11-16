@@ -1,4 +1,5 @@
 #include "fetch.hpp"
+#include "i18n.hpp"
 
 #include <algorithm>
 #include <array>
@@ -119,16 +120,16 @@ void Fetch::update(double seconds) {
         if (reached && inside) {
             if (item->broken) {
                 --lives_;
-                say("caught " + item->label + ", that one was broken");
+                say(i18n::format("caught {}, that one was broken", {item->label}));
             } else {
                 ++score_;
-                say("fetched " + item->label);
+                say(i18n::format("fetched {}", {item->label}));
             }
             item = items_.erase(item);
         } else if (item->y >= rows_) {
             if (!item->broken) {
                 --lives_;
-                say("missed " + item->label);
+                say(i18n::format("missed {}", {item->label}));
             }
             item = items_.erase(item);
         } else {
@@ -151,18 +152,18 @@ Frame Fetch::frame() const {
     frame.text(basket_x_, rows_ - 1, basket, Role::Accent, true);
     std::string hearts;
     for (int heart = 0; heart < lives_; ++heart) hearts += "♥";
-    frame.status = "fetched " + std::to_string(score_) + "   " + hearts;
-    frame.status += message_timer_ > 0 ? "   " + message_ : "   red ones are broken, let them fall";
+    frame.status = i18n::format("fetched {}", {std::to_string(score_)}) + "   " + hearts;
+    frame.status += "   " + (message_timer_ > 0 ? message_ : tr("red ones are broken, let them fall"));
     if (over_) {
-        frame.banner = " Game over · r to play again ";
+        frame.banner = " " + tr("Game over · r to play again") + " ";
         frame.banner_role = Role::Error;
     }
     return frame;
 }
 
 std::vector<std::pair<std::string, std::string>> Fetch::hints() const {
-    if (over_) return {{"r", "play again"}, {"esc", "games"}};
-    return {{"left/right", "move the basket"}, {"esc", "games"}};
+    if (over_) return {{"r", N_("play again")}, {"esc", N_("games")}};
+    return {{"left/right", N_("move the basket")}, {"esc", N_("games")}};
 }
 
 }  // namespace games

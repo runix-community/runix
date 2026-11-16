@@ -100,7 +100,17 @@ struct Settings {
     /// Eight hex digits; the pool is created under this host ID, so the
     /// installed system imports it as its own.
     std::string zfs_host_id;
+    /// Nix from the installer's settings, added to configuration.nix as is.
+    std::string extra_configuration;
 };
+
+/// Stable names for the choices, used by the installer's settings file
+/// (runix.iso.installer.defaults): "blxshell-zwwm", "cachyos", "grub"...
+const char* id(Filesystem filesystem);
+const char* id(Desktop desktop);
+const char* id(Network network);
+const char* id(BootLoader loader);
+const char* id(Kernel kernel);
 
 /// Empty when this kernel and filesystem work together, otherwise why not.
 std::string check_kernel(Kernel kernel, Filesystem filesystem);

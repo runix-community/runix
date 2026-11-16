@@ -1,4 +1,5 @@
 #include "bricks.hpp"
+#include "i18n.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -288,21 +289,22 @@ Frame Bricks::frame() const {
     }
     std::string hearts;
     for (int heart = 0; heart < lives_; ++heart) hearts += "♥";
-    frame.status = "score " + std::to_string(score_) + "   level " + std::to_string(level_) + "   " + hearts +
-                   "   catch the falling debris for extra points";
+    frame.status = i18n::format("score {}", {std::to_string(score_)}) + "   " +
+                   i18n::format("level {}", {std::to_string(level_)}) + "   " + hearts + "   " +
+                   tr("catch the falling debris for extra points");
     if (over_) {
-        frame.banner = " Game over · r to play again ";
+        frame.banner = " " + tr("Game over · r to play again") + " ";
         frame.banner_role = Role::Error;
     } else if (!served_) {
-        frame.banner = " Space to serve ";
+        frame.banner = " " + tr("Space to serve") + " ";
         frame.banner_role = Role::Accent;
     }
     return frame;
 }
 
 std::vector<std::pair<std::string, std::string>> Bricks::hints() const {
-    if (over_) return {{"r", "play again"}, {"esc", "games"}};
-    return {{"left/right", "move"}, {"space", "serve"}, {"esc", "games"}};
+    if (over_) return {{"r", N_("play again")}, {"esc", N_("games")}};
+    return {{"left/right", N_("move")}, {"space", N_("serve")}, {"esc", N_("games")}};
 }
 
 }  // namespace games

@@ -1,9 +1,23 @@
 #include "config.hpp"
+#include "i18n.hpp"
 
 #include <algorithm>
 #include <cstdio>
+#include <sstream>
 
 namespace config {
+
+namespace {
+
+/// Indents each line by two spaces, for a block inside the module's braces.
+std::string indent(const std::string& text) {
+    std::istringstream lines(text);
+    std::string out;
+    for (std::string line; std::getline(lines, line);) out += line.empty() ? "\n" : "  " + line + "\n";
+    return out;
+}
+
+}  // namespace
 
 const char* name(Filesystem filesystem) {
     switch (filesystem) {
@@ -16,39 +30,74 @@ const char* name(Filesystem filesystem) {
 
 const char* description(Filesystem filesystem) {
     switch (filesystem) {
-        case Filesystem::Ext4: return "Simple and reliable";
-        case Filesystem::Btrfs: return "Checksums and compression support";
-        case Filesystem::Zfs: return "Pooled storage with snapshots, checksums and compression";
+        case Filesystem::Ext4: return N_("Simple and reliable");
+        case Filesystem::Btrfs: return N_("Checksums and compression support");
+        case Filesystem::Zfs: return N_("Pooled storage with snapshots, checksums and compression");
     }
     return "";
 }
 
 const char* name(Desktop desktop) {
     switch (desktop) {
-        case Desktop::None: return "Console only";
-        case Desktop::BlxshellZwwm: return "blxshell on zwwm";
-        case Desktop::BlxshellHyprland: return "blxshell on Hyprland";
-        case Desktop::Hyprland: return "Hyprland";
-        case Desktop::Labwc: return "Labwc";
-        case Desktop::Niri: return "Niri";
-        case Desktop::Zwwm: return "zwwm";
-        case Desktop::Shojiwm: return "ShojiWM";
-        case Desktop::Driftwm: return "driftwm";
+        case Desktop::None: return N_("Console only");
+        case Desktop::BlxshellZwwm: return N_("blxshell on zwwm");
+        case Desktop::BlxshellHyprland: return N_("blxshell on Hyprland");
+        case Desktop::Hyprland: return N_("Hyprland");
+        case Desktop::Labwc: return N_("Labwc");
+        case Desktop::Niri: return N_("Niri");
+        case Desktop::Zwwm: return N_("zwwm");
+        case Desktop::Shojiwm: return N_("ShojiWM");
+        case Desktop::Driftwm: return N_("driftwm");
     }
     return "";
 }
 
 const char* description(Desktop desktop) {
     switch (desktop) {
-        case Desktop::None: return "a text console, add a desktop later";
-        case Desktop::BlxshellZwwm: return "the Runix desktop: blxshell on the zwwm compositor";
-        case Desktop::BlxshellHyprland: return "blxshell on Hyprland";
-        case Desktop::Hyprland: return "dynamic tiling compositor";
-        case Desktop::Labwc: return "stacking compositor, like Openbox";
-        case Desktop::Niri: return "scrollable tiling compositor";
-        case Desktop::Zwwm: return "the zwwm compositor on its own";
-        case Desktop::Shojiwm: return "experimental compositor";
-        case Desktop::Driftwm: return "experimental compositor";
+        case Desktop::None: return N_("a text console, add a desktop later");
+        case Desktop::BlxshellZwwm: return N_("the Runix desktop: blxshell on the zwwm compositor");
+        case Desktop::BlxshellHyprland: return N_("blxshell on Hyprland");
+        case Desktop::Hyprland: return N_("dynamic tiling compositor");
+        case Desktop::Labwc: return N_("stacking compositor, like Openbox");
+        case Desktop::Niri: return N_("scrollable tiling compositor");
+        case Desktop::Zwwm: return N_("the zwwm compositor on its own");
+        case Desktop::Shojiwm: return N_("experimental compositor");
+        case Desktop::Driftwm: return N_("experimental compositor");
+    }
+    return "";
+}
+
+const char* id(Filesystem filesystem) { return name(filesystem); }
+
+const char* id(Desktop desktop) {
+    switch (desktop) {
+        case Desktop::None: return "none";
+        case Desktop::BlxshellZwwm: return "blxshell-zwwm";
+        case Desktop::BlxshellHyprland: return "blxshell-hyprland";
+        case Desktop::Hyprland: return "hyprland";
+        case Desktop::Labwc: return "labwc";
+        case Desktop::Niri: return "niri";
+        case Desktop::Zwwm: return "zwwm";
+        case Desktop::Shojiwm: return "shojiwm";
+        case Desktop::Driftwm: return "driftwm";
+    }
+    return "";
+}
+
+const char* id(Network network) { return network == Network::Wifi ? "wifi" : "wired"; }
+
+const char* id(BootLoader loader) { return loader == BootLoader::Grub ? "grub" : "limine"; }
+
+const char* id(Kernel kernel) {
+    switch (kernel) {
+        case Kernel::Default: return "default";
+        case Kernel::Latest: return "latest";
+        case Kernel::Lts612: return "lts-6.12";
+        case Kernel::Zen: return "zen";
+        case Kernel::Xanmod: return "xanmod";
+        case Kernel::Cachyos: return "cachyos";
+        case Kernel::CachyosLts: return "cachyos-lts";
+        case Kernel::CachyosBore: return "cachyos-bore";
     }
     return "";
 }
@@ -74,8 +123,8 @@ static const char* program(Desktop desktop) {
 
 const char* name(Network network) {
     switch (network) {
-        case Network::Wifi: return "Wi-Fi with runix-network";
-        case Network::Dhcpcd: return "Wired with dhcpcd";
+        case Network::Wifi: return N_("Wi-Fi with runix-network");
+        case Network::Dhcpcd: return N_("Wired with dhcpcd");
     }
     return "";
 }
@@ -99,28 +148,28 @@ static const char* option(BootLoader loader) {
 
 const char* name(Kernel kernel) {
     switch (kernel) {
-        case Kernel::Default: return "Linux LTS";
-        case Kernel::Latest: return "Linux latest";
-        case Kernel::Lts612: return "Linux 6.12 LTS";
-        case Kernel::Zen: return "Zen";
-        case Kernel::Xanmod: return "XanMod";
-        case Kernel::Cachyos: return "CachyOS";
-        case Kernel::CachyosLts: return "CachyOS LTS";
-        case Kernel::CachyosBore: return "CachyOS BORE";
+        case Kernel::Default: return N_("Linux LTS");
+        case Kernel::Latest: return N_("Linux latest");
+        case Kernel::Lts612: return N_("Linux 6.12 LTS");
+        case Kernel::Zen: return N_("Zen");
+        case Kernel::Xanmod: return N_("XanMod");
+        case Kernel::Cachyos: return N_("CachyOS");
+        case Kernel::CachyosLts: return N_("CachyOS LTS");
+        case Kernel::CachyosBore: return N_("CachyOS BORE");
     }
     return "";
 }
 
 const char* description(Kernel kernel) {
     switch (kernel) {
-        case Kernel::Default: return "the nixpkgs default, long-term support";
-        case Kernel::Latest: return "the newest stable release";
-        case Kernel::Lts612: return "the previous long-term release, for older hardware";
-        case Kernel::Zen: return "tuned for desktop responsiveness";
-        case Kernel::Xanmod: return "desktop and gaming tuning, newest stable base";
-        case Kernel::Cachyos: return "CachyOS patches and tuning, newest release";
-        case Kernel::CachyosLts: return "CachyOS patches on the long-term release";
-        case Kernel::CachyosBore: return "CachyOS with the BORE scheduler";
+        case Kernel::Default: return N_("the nixpkgs default, long-term support");
+        case Kernel::Latest: return N_("the newest stable release");
+        case Kernel::Lts612: return N_("the previous long-term release, for older hardware");
+        case Kernel::Zen: return N_("tuned for desktop responsiveness");
+        case Kernel::Xanmod: return N_("desktop and gaming tuning, newest stable base");
+        case Kernel::Cachyos: return N_("CachyOS patches and tuning, newest release");
+        case Kernel::CachyosLts: return N_("CachyOS patches on the long-term release");
+        case Kernel::CachyosBore: return N_("CachyOS with the BORE scheduler");
     }
     return "";
 }
@@ -158,7 +207,7 @@ std::string check_kernel(Kernel kernel, Filesystem filesystem) {
     // The CachyOS flake ships its own ZFS module, which need not match the
     // ZFS tools Runix installs, so the pairing is not offered.
     if (filesystem == Filesystem::Zfs && from_cachyos(kernel)) {
-        return "ZFS is not available with CachyOS kernels yet. Go back and pick another kernel.";
+        return N_("ZFS is not available with CachyOS kernels yet. Go back and pick another kernel.");
     }
     return "";
 }
@@ -381,7 +430,8 @@ std::string configuration(const Settings& settings) {
     }
     std::string kernel;
     if (const char* set = package_set(settings.kernel)) kernel = std::string("  runix.kernel.packageSet = ") + set + ";\n";
-    std::string arguments = from_cachyos(settings.kernel) ? "{ pkgs, nix-cachyos-kernel, ... }:\n" : "{ pkgs, ... }:\n";
+    std::string arguments = from_cachyos(settings.kernel) ? "{ config, lib, pkgs, nix-cachyos-kernel, ... }:\n"
+                                                          : "{ config, lib, pkgs, ... }:\n";
     return arguments +
            "{\n"
            "  runix.hostName = \"" + settings.host + "\";\n"
@@ -404,7 +454,12 @@ std::string configuration(const Settings& settings) {
            "  programs.sudo.enable = true;\n"
            "  runix.services.getty.command = \"${pkgs.busybox}/bin/getty 38400 tty1\";\n"
            "\n" +
-           kernel + network + desktop + "}\n";
+           kernel + network + desktop +
+           (settings.extra_configuration.empty()
+                ? std::string()
+                : "\n  # From the installer's settings (runix.iso.installer.extraConfiguration).\n" +
+                      indent(settings.extra_configuration)) +
+           "}\n";
 }
 
 std::string nix_settings(const Settings& settings) {

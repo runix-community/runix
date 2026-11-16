@@ -7,6 +7,7 @@
 
 #include "app.hpp"
 #include "games.hpp"
+#include "i18n.hpp"
 #include "install.hpp"
 #include "report.hpp"
 #include "util.hpp"
@@ -205,29 +206,29 @@ std::vector<Line> logo() {
 }
 
 Line compact_header() {
-    return {span("runix", Color::Accent, true), span("  installer", Color::Muted)};
+    return {span("runix", Color::Accent, true), span("  " + tr("installer"), Color::Muted)};
 }
 
 std::string subtitle(const App& app) {
     switch (app.screen) {
-        case Screen::Network: return "Runix downloads its packages while installing.";
-        case Screen::Disk: return "Choose the disk to install Runix on.";
+        case Screen::Network: return N_("Runix downloads its packages while installing.");
+        case Screen::Disk: return N_("Choose the disk to install Runix on.");
         case Screen::Bootloader:
             return app.boot_mode == config::BootMode::Efi
-                       ? "This machine boots with UEFI. Both loaders list every Runix generation."
-                       : "This machine boots with legacy BIOS. Both loaders list every Runix generation.";
-        case Screen::Kernel: return "CachyOS kernels come from a separate binary cache, added for you.";
-        case Screen::Partitioning: return "Let the installer partition the disk, or pick partitions yourself.";
-        case Screen::Partitions: return "Mark a boot and a root partition. Others are left alone.";
-        case Screen::Filesystem: return "Choose a filesystem for the root partition.";
-        case Screen::Account: return "Name this computer and create your administrator account.";
-        case Screen::Timezone: return "Type to search, then pick yours.";
-        case Screen::Desktop: return "Desktops take longer to install.";
-        case Screen::Connection: return "Wi-Fi keeps the network you joined here.";
-        case Screen::Review: return "Last chance to go back. Nothing has changed yet.";
-        case Screen::Installing: return "This takes a while. Keep the computer powered on.";
-        case Screen::Failed: return "Nothing past the failed step was run.";
-        case Screen::Done: return "Remove the installation medium, then reboot.";
+                       ? N_("This machine boots with UEFI. Both loaders list every Runix generation.")
+                       : N_("This machine boots with legacy BIOS. Both loaders list every Runix generation.");
+        case Screen::Kernel: return N_("CachyOS kernels come from a separate binary cache, added for you.");
+        case Screen::Partitioning: return N_("Let the installer partition the disk, or pick partitions yourself.");
+        case Screen::Partitions: return N_("Mark a boot and a root partition. Others are left alone.");
+        case Screen::Filesystem: return N_("Choose a filesystem for the root partition.");
+        case Screen::Account: return N_("Name this computer and create your administrator account.");
+        case Screen::Timezone: return N_("Type to search, then pick yours.");
+        case Screen::Desktop: return N_("Desktops take longer to install.");
+        case Screen::Connection: return N_("Wi-Fi keeps the network you joined here.");
+        case Screen::Review: return N_("Last chance to go back. Nothing has changed yet.");
+        case Screen::Installing: return N_("This takes a while. Keep the computer powered on.");
+        case Screen::Failed: return N_("Nothing past the failed step was run.");
+        case Screen::Done: return N_("Remove the installation medium, then reboot.");
         case Screen::Welcome: return "";
     }
     return "";
@@ -281,8 +282,8 @@ Rect draw_frame(const App& app, Rect body) {
     }
     draw_lines(steps, {progress_dots(app)});
     Color heading_color = app.screen == Screen::Failed ? Color::Error : Color::Light;
-    draw_lines(heading, {{span(title(app.screen), heading_color, true)}});
-    draw_lines(sub, {muted(subtitle(app))});
+    draw_lines(heading, {{span(tr(title(app.screen)), heading_color, true)}});
+    draw_lines(sub, {muted(tr(subtitle(app)))});
     return area;
 }
 
@@ -293,7 +294,7 @@ void draw_footer(const App& app, Rect area) {
         if (!first) line.push_back(span("  ·  ", Color::Muted));
         first = false;
         line.push_back(span(key, Color::Light, true));
-        line.push_back(span(" " + action, Color::Muted));
+        line.push_back(span(" " + tr(action), Color::Muted));
     }
     int width = static_cast<int>(line_width(line));
     draw_line(area.y, area.x + std::max(0, (area.w - width) / 2), area.w, line);
@@ -303,14 +304,22 @@ void draw_welcome(Rect area) {
     bool large = area.h >= logo_height + 10 && area.w >= logo_width + 2;
     std::vector<Line> lines = large ? logo() : std::vector<Line>{compact_header()};
     lines.push_back({});
-    lines.push_back(muted("A NixOS that runs on runit."));
+    lines.push_back(muted(tr("A NixOS that runs on runit.")));
     lines.push_back({});
-    lines.push_back({plain("This installs Runix on a whole disk. Nothing is")});
-    lines.push_back({plain("changed until you confirm on the last screen.")});
+    for (auto& line : wrapped(tr("This installs Runix on a whole disk. Nothing is changed until you confirm on the last screen."), A_NORMAL, large ? logo_width : 50))
+        lines.push_back(line);
     lines.push_back({});
-    lines.push_back({plain("Press "), span("Enter", Color::Accent, true), plain(" to begin")});
+    lines.push_back({plain(i18n::format("Press {} to begin", {"Enter"}))});
     lines.push_back({});
-    lines.push_back(muted("A shell is waiting on tty2 (Alt+F2)."));
+    lines.push_back(muted(tr("A shell is waiting on tty2 (Alt+F2).")));
+    if (i18n::languages().size() > 1) {
+        std::string name = "English";
+        for (const auto& language : i18n::languages())
+            if (language.code == i18n::current()) name = language.name;
+        lines.push_back({});
+        lines.push_back({plain(tr("Language") + ": "), span(name, Color::Accent, true),
+                         span("  " + i18n::format("{} to change", {"l"}), Color::Muted)});
+    }
     int height = static_cast<int>(lines.size());
     Rect block = column(area, large ? logo_width : 50);
     block.y = area.y + std::max(0, (area.h - height) / 2);
@@ -352,35 +361,35 @@ void draw_network(App& app, Rect area) {
     take_rows(area, 1);
     Line line;
     if (app.connecting) {
-        line = {span(std::string(1, spinner(app)) + " Joining " + *app.connecting + "...", Color::Warn)};
+        line = {span(std::string(1, spinner(app)) + " " + i18n::format("Joining {}...", {*app.connecting}), Color::Warn)};
     } else if (app.online == OnlineState::Online) {
-        line = {span("■ Online", Color::Accent, true)};
+        line = {span("■ " + tr("Online"), Color::Accent, true)};
     } else if (app.online == OnlineState::Checking) {
-        line = {span(std::string(1, spinner(app)) + " Checking the connection...", Color::Warn)};
+        line = {span(std::string(1, spinner(app)) + " " + tr("Checking the connection..."), Color::Warn)};
     } else {
-        line = {span("■ Offline", Color::Error, true), span("  wired networks connect by themselves", Color::Muted)};
+        line = {span("■ " + tr("Offline"), Color::Error, true), span("  " + tr("wired networks connect by themselves"), Color::Muted)};
     }
     draw_lines(status, {line});
 
     if (!app.wireless) {
-        draw_lines(area, {muted("No wireless card found.")});
+        draw_lines(area, {muted(tr("No wireless card found."))});
         return;
     }
     if (app.networks.empty()) {
-        draw_lines(area, {muted(app.scanning ? std::string(1, spinner(app)) + " Looking for Wi-Fi networks..."
-                                             : "No Wi-Fi networks found. Press r to scan again.")});
+        draw_lines(area, {muted(app.scanning ? std::string(1, spinner(app)) + " " + tr("Looking for Wi-Fi networks...")
+                                             : tr("No Wi-Fi networks found. Press r to scan again."))});
         return;
     }
     std::vector<Line> items;
-    for (const auto& network : app.networks) items.push_back(entry(network.ssid, network.secured ? "secured" : "open", 34));
+    for (const auto& network : app.networks) items.push_back(entry(network.ssid, tr(network.secured ? N_("secured") : N_("open")), 34));
     choice_list(area, items, app.network_list);
 }
 
 void draw_disks(App& app, Rect area) {
     if (app.disks.empty()) {
-        std::vector<Line> lines{{span("No usable disk was found.", Color::Warn, true)}};
-        auto more = wrapped("Runix needs a writable disk of at least " +
-                                util::format_size(system_probe::minimum_disk_bytes) + ". Press r to look again.",
+        std::vector<Line> lines{{span(tr("No usable disk was found."), Color::Warn, true)}};
+        auto more = wrapped(i18n::format("Runix needs a writable disk of at least {}. Press r to look again.",
+                                             {util::format_size(system_probe::minimum_disk_bytes)}),
                             fg(Color::Muted), area.w);
         lines.insert(lines.end(), more.begin(), more.end());
         draw_lines(area, lines);
@@ -480,8 +489,8 @@ void disk_map(Rect area, const std::vector<Segment>& segments, bool legend) {
 std::vector<Segment> automatic_segments(std::uint64_t disk_size) {
     std::uint64_t boot = std::min(install::boot_size, disk_size);
     return {
-        {"boot", "boot", "FAT32, kernels and the boot loader", boot, Color::Blue, false},
-        {"root", "root", "the system, your files and the Nix store", disk_size - boot, Color::Accent, false},
+        {"boot", tr("boot"), tr("FAT32, kernels and the boot loader"), boot, Color::Blue, false},
+        {"root", tr("root"), tr("the system, your files and the Nix store"), disk_size - boot, Color::Accent, false},
     };
 }
 
@@ -533,7 +542,7 @@ std::vector<Segment> manual_segments(const App& app, std::uint64_t disk_size) {
     std::uint64_t free = disk_size > used ? disk_size - used : 0;
     // GPT and alignment always leave a few MiB, which is not worth showing.
     if (free > 16ull * 1024 * 1024) {
-        segments.push_back({"unallocated", "free", "create partitions here with cfdisk", free, Color::Muted, true});
+        segments.push_back({"unallocated", tr("free"), tr("create partitions here with cfdisk"), free, Color::Muted, true});
     }
     return segments;
 }
@@ -547,8 +556,8 @@ void draw_partitioning(App& app, Rect area) {
     Rect list = take_rows(area, 2);
     take_rows(area, 1);
     choice_list(list,
-                {entry("Automatic", "erase the whole disk and partition it for you", 12),
-                 entry("Manual", "use existing partitions, or make them in cfdisk", 12)},
+                {entry(tr("Automatic"), tr("erase the whole disk and partition it for you"), 12),
+                 entry(tr("Manual"), tr("use existing partitions, or make them in cfdisk"), 12)},
                 app.partitioning_list);
     disk_map(area, app.manual() ? manual_segments(app, disk_size(app)) : automatic_segments(disk_size(app)), true);
 }
@@ -563,7 +572,7 @@ void draw_partitions(App& app, Rect area) {
     disk_map(map, segments, false);
 
     if (app.partitions.empty()) {
-        draw_lines(area, {muted("This disk has no partitions yet. Press e to create them in cfdisk.")});
+        draw_lines(area, {muted(tr("This disk has no partitions yet. Press e to create them in cfdisk."))});
     } else {
         std::vector<Line> items;
         for (const auto& partition : app.partitions) {
@@ -572,11 +581,11 @@ void draw_partitions(App& app, Rect area) {
             Color color = Color::Muted;
             if (const char* chosen = role(app, partition, color)) {
                 std::string tag = std::string(chosen) == "boot"
-                                      ? std::string("boot, ") + (app.format_boot ? "format" : "keep")
-                                      : "root, format";
+                                      ? tr(app.format_boot ? N_("boot, format") : N_("boot, keep"))
+                                      : tr("root, format");
                 line.push_back(span(tag, color, true));
             } else if (partition.mounted) {
-                line.push_back(span("mounted", Color::Warn));
+                line.push_back(span(tr("mounted"), Color::Warn));
             }
             items.push_back(line);
         }
@@ -587,29 +596,29 @@ void draw_partitions(App& app, Rect area) {
     if (app.partition_error) {
         draw_lines(status, wrapped(*app.partition_error, fg(Color::Error), status.w));
     } else if (root && root->fstype) {
-        draw_lines(status, wrapped(root->path + " holds " + *root->fstype + " data. It will be erased.",
+        draw_lines(status, wrapped(i18n::format("{} holds {} data. It will be erased.", {root->path, *root->fstype}),
                                    fg(Color::Warn, true), status.w));
     } else {
-        draw_lines(status, {muted("Only the boot and root partitions are touched.")});
+        draw_lines(status, {muted(tr("Only the boot and root partitions are touched."))});
     }
 }
 
 void draw_bootloader(App& app, Rect area) {
     std::vector<Line> items;
-    for (auto loader : config::loaders) items.push_back(entry(config::name(loader), config::description(loader), 10));
+    for (auto loader : config::loaders) items.push_back(entry(tr(config::name(loader)), tr(config::description(loader)), 10));
     choice_list(area, items, app.bootloader_list);
 }
 
 void draw_kernel(App& app, Rect area) {
     std::vector<Line> items;
-    for (auto kernel : config::kernels) items.push_back(entry(config::name(kernel), config::description(kernel), 16));
+    for (auto kernel : config::kernels) items.push_back(entry(tr(config::name(kernel)), tr(config::description(kernel)), 16));
     choice_list(area, items, app.kernel_list);
 }
 
 void draw_filesystem(App& app, Rect area) {
     std::vector<Line> items;
     for (auto filesystem : config::filesystems) {
-        items.push_back(entry(config::name(filesystem), config::description(filesystem), 10));
+        items.push_back(entry(tr(config::name(filesystem)), tr(config::description(filesystem)), 10));
     }
     Rect list = take_rows(area, static_cast<int>(items.size()));
     choice_list(list, items, app.filesystem_list);
@@ -619,13 +628,13 @@ void draw_filesystem(App& app, Rect area) {
 
 void draw_desktop(App& app, Rect area) {
     std::vector<Line> items;
-    for (auto desktop : config::desktops) items.push_back(entry(config::name(desktop), config::description(desktop), 22));
+    for (auto desktop : config::desktops) items.push_back(entry(tr(config::name(desktop)), tr(config::description(desktop)), 22));
     choice_list(area, items, app.desktop_list);
 }
 
 void draw_connection(App& app, Rect area) {
     std::vector<Line> items;
-    for (auto network : config::networks) items.push_back({plain(config::name(network))});
+    for (auto network : config::networks) items.push_back({plain(tr(config::name(network)))});
     choice_list(area, items, app.connection_list);
 }
 
@@ -641,10 +650,10 @@ Line field(const std::string& label, const Input& input, bool focused) {
 
 void draw_account(App& app, Rect area) {
     std::vector<Line> lines{
-        field("Host name", app.host, app.focus == 0), {},
-        field("User name", app.user, app.focus == 1), {},
-        field("Password", app.password, app.focus == 2), {},
-        field("Confirm password", app.confirm, app.focus == 3), {},
+        field(tr("Host name"), app.host, app.focus == 0), {},
+        field(tr("User name"), app.user, app.focus == 1), {},
+        field(tr("Password"), app.password, app.focus == 2), {},
+        field(tr("Confirm password"), app.confirm, app.focus == 3), {},
     };
     if (app.form_error) {
         auto error = wrapped(*app.form_error, fg(Color::Error), area.w);
@@ -656,11 +665,11 @@ void draw_account(App& app, Rect area) {
 void draw_timezone(App& app, Rect area) {
     Rect search = take_rows(area, 1);
     take_rows(area, 1);
-    draw_lines(search, {field("Search", app.zone_filter, true)});
+    draw_lines(search, {field(tr("Search"), app.zone_filter, true)});
     std::vector<Line> items;
     for (const auto& zone : app.visible_zones()) items.push_back({plain(zone)});
     if (items.empty()) {
-        draw_lines(area, {muted("No time zone matches.")});
+        draw_lines(area, {muted(tr("No time zone matches."))});
         return;
     }
     choice_list(area, items, app.zone_list);
@@ -669,24 +678,24 @@ void draw_timezone(App& app, Rect area) {
 void draw_review(App& app, Rect area) {
     std::vector<Line> lines;
     for (const auto& [label, value] : app.summary()) {
-        lines.push_back({span("  " + util::pad_right(label, 14), Color::Muted), span(value, Color::Light)});
+        lines.push_back({span("  " + util::pad_right(tr(label), 14), Color::Muted), span(value, Color::Light)});
     }
     lines.push_back({});
     auto layout = app.layout();
     std::string warning;
     if (layout.kind == install::DiskLayout::Kind::Automatic) {
-        warning = "All data on this disk will be destroyed.";
+        warning = tr("All data on this disk will be destroyed.");
     } else if (layout.format_boot) {
-        warning = "All data on " + layout.boot + " and " + layout.root + " will be destroyed.";
+        warning = i18n::format("All data on {} and {} will be destroyed.", {layout.boot, layout.root});
     } else {
-        warning = "All data on " + layout.root + " will be destroyed.";
+        warning = i18n::format("All data on {} will be destroyed.", {layout.root});
     }
     lines.push_back({span("  " + warning, Color::Error, true)});
     lines.push_back({});
-    lines.push_back(field("Type ERASE", app.confirmation, true));
+    lines.push_back(field(i18n::format("Type {}", {confirmation_word}), app.confirmation, true));
     if (app.confirmation.value == confirmation_word) {
         lines.push_back({});
-        lines.push_back({span("  Press Enter to install.", Color::Accent, true)});
+        lines.push_back({span("  " + tr("Press Enter to install."), Color::Accent, true)});
     }
     draw_lines(area, lines);
 }
@@ -708,7 +717,7 @@ std::string format_elapsed(const App& app) {
 std::vector<Line> phase_lines(const App& app) {
     std::vector<Line> lines;
     for (std::size_t index = 0; index < install::phases.size(); ++index) {
-        std::string name = install::phases[index];
+        std::string name = tr(install::phases[index]);
         if (index < app.phase || app.phase_done) {
             lines.push_back({span("■ " + name, Color::Accent)});
         } else if (index == app.phase && app.error) {
@@ -784,7 +793,7 @@ void draw_game(App& app, Rect area) {
     std::string banner = frame.banner;
     Color color = color_of(frame.banner_role);
     if (app.done_while_playing) {
-        banner = " Runix is installed · press Enter ";
+        banner = " " + tr("Runix is installed · press Enter") + " ";
         color = Color::Accent;
     }
     if (!banner.empty()) {
@@ -794,28 +803,28 @@ void draw_game(App& app, Rect area) {
     }
     std::string status = frame.status;
     int best = app.best_score(app.game_index);
-    if (best > 0) status = "best " + std::to_string(best) + "   " + status;
+    if (best > 0) status = i18n::format("best {}", {std::to_string(best)}) + "   " + status;
     put(area.y + frame.height + 2, area.x, status, fg(Color::Muted), area.w);
 }
 
 /// The menu of games, until one is picked.
 void draw_hub(App& app, Rect area) {
-    std::vector<Line> lines{{span("Games", Color::Light, true),
-                             span("  while Nix installs; the install keeps going", Color::Muted)},
+    std::vector<Line> lines{{span(tr("Games"), Color::Light, true),
+                             span("  " + tr("while Nix installs; the install keeps going"), Color::Muted)},
                             {}};
     draw_lines(take_rows(area, 2), lines);
     std::vector<Line> items;
     const auto& entries = games::catalog();
     for (std::size_t index = 0; index < entries.size(); ++index) {
-        Line line = entry(entries[index].name, entries[index].description, 9);
+        Line line = entry(tr(entries[index].name), tr(entries[index].description), 9);
         int best = app.best_score(index);
-        if (best > 0) line.push_back(span("  best " + std::to_string(best), Color::Warn));
+        if (best > 0) line.push_back(span("  " + i18n::format("best {}", {std::to_string(best)}), Color::Warn));
         items.push_back(line);
     }
     choice_list(take_rows(area, static_cast<int>(items.size())), items, app.hub_list);
     if (app.done_while_playing) {
         take_rows(area, 1);
-        draw_lines(take_rows(area, 1), {{span("Runix is installed · press Enter", Color::Accent, true)}});
+        draw_lines(take_rows(area, 1), {{span(tr("Runix is installed · press Enter"), Color::Accent, true)}});
     }
 }
 
@@ -824,9 +833,9 @@ void draw_installing(App& app, Rect area) {
         // One line for the phases leaves the rest of the screen to the board.
         std::size_t current = std::min(app.phase, install::phases.size() - 1);
         draw_lines(take_rows(area, 1),
-                   {{span(std::string(1, spinner(app)) + " " + install::phases[current], Color::Light, true),
-                     span("  step " + std::to_string(current + 1) + " of " +
-                              std::to_string(install::phases.size()),
+                   {{span(std::string(1, spinner(app)) + " " + tr(install::phases[current]), Color::Light, true),
+                     span("  " + i18n::format("step {} of {}", {std::to_string(current + 1),
+                                                           std::to_string(install::phases.size())}),
                           Color::Muted)}});
         draw_lines(take_rows(area, 1), {progress_bar(app, area.w)});
         draw_lines(take_rows(area, 2), nix_lines(app));
@@ -853,20 +862,20 @@ void draw_installing(App& app, Rect area) {
 }
 
 void draw_failed(App& app, Rect area) {
-    std::vector<Line> message = wrapped(app.error.value_or("The installation failed."), fg(Color::Error, true), area.w);
-    message.push_back(muted(std::string("Full log: ") + install::log_path));
+    std::vector<Line> message = wrapped(app.error.value_or(tr("The installation failed.")), fg(Color::Error, true), area.w);
+    message.push_back(muted(i18n::format("Full log: {}", {install::log_path})));
     if (app.uploading) {
-        message.push_back({span(std::string(1, spinner(app)) + " Uploading the log...", Color::Warn)});
+        message.push_back({span(std::string(1, spinner(app)) + " " + tr("Uploading the log..."), Color::Warn)});
     } else if (app.upload_url) {
-        message.push_back({span("Log uploaded: ", Color::Light), span(*app.upload_url, Color::Accent, true)});
-        auto next = wrapped(std::string("Open an issue at ") + report::issues_url + " and include this link.",
+        message.push_back({span(tr("Log uploaded:") + " ", Color::Light), span(*app.upload_url, Color::Accent, true)});
+        auto next = wrapped(i18n::format("Open an issue at {} and include this link.", {report::issues_url}),
                             fg(Color::Muted), area.w);
         message.insert(message.end(), next.begin(), next.end());
     } else if (app.upload_error) {
-        auto failed = wrapped("Upload failed: " + *app.upload_error, fg(Color::Error), area.w);
+        auto failed = wrapped(i18n::format("Upload failed: {}", {*app.upload_error}), fg(Color::Error), area.w);
         message.insert(message.end(), failed.begin(), failed.end());
     } else {
-        message.push_back(muted("Press u to upload the log for a bug report."));
+        message.push_back(muted(tr("Press u to upload the log for a bug report.")));
     }
     draw_lines(take_rows(area, static_cast<int>(message.size())), message);
     take_rows(area, 1);
@@ -877,11 +886,11 @@ void draw_failed(App& app, Rect area) {
 }
 
 void draw_done(App& app, Rect area) {
-    draw_lines(take_rows(area, 2), {{span("Runix is installed.", Color::Accent, true)},
-                                    muted("Finished in " + format_elapsed(app) + ".")});
+    draw_lines(take_rows(area, 2), {{span(tr("Runix is installed."), Color::Accent, true)},
+                                    muted(i18n::format("Finished in {}.", {format_elapsed(app)}))});
     take_rows(area, 1);
     std::vector<Line> items;
-    for (const char* action : done_actions) items.push_back({plain(action)});
+    for (const char* action : done_actions) items.push_back({plain(tr(action))});
     choice_list(area, items, app.done_list);
 }
 
@@ -894,34 +903,34 @@ void draw_modal(const App& app) {
     int inner = std::max(1, width - 4);
     switch (modal.kind) {
         case Modal::Kind::Quit:
-            heading = "Exit installer";
-            lines = {{plain("Exit to a shell?")}, muted("Run runix-installer to start again.")};
+            heading = tr("Exit installer");
+            lines = {{plain(tr("Exit to a shell?"))}, muted(tr("Run runix-installer to start again."))};
             break;
         case Modal::Kind::WifiName:
-            heading = "Other network";
-            lines = {field("Network name", modal.input, true)};
+            heading = tr("Other network");
+            lines = {field(tr("Network name"), modal.input, true)};
             break;
         case Modal::Kind::WifiPassword:
-            heading = "Join Wi-Fi";
-            lines = {{plain("Password for " + modal.ssid)}, muted("Leave it empty for an open network."), {},
-                     field("Password", modal.input, true)};
+            heading = tr("Join Wi-Fi");
+            lines = {{plain(i18n::format("Password for {}", {modal.ssid}))}, muted(tr("Leave it empty for an open network.")), {},
+                     field(tr("Password"), modal.input, true)};
             break;
         case Modal::Kind::UploadLog: {
-            heading = "Upload log";
+            heading = tr("Upload log");
             std::string service = app.options.paste_url;
             if (auto scheme = service.find("://"); scheme != std::string::npos) service = service.substr(scheme + 3);
             if (!service.empty() && service.back() == '/') service.pop_back();
-            lines = wrapped("Upload the install log to " + service +
-                                "? Anyone with the link can read it. Your host and user names are replaced; "
-                                "disk names and package versions stay.",
+            lines = wrapped(i18n::format("Upload the install log to {}? Anyone with the link can read it. Your host and "
+                                         "user names are replaced; disk names and package versions stay.",
+                                         {service}),
                             A_NORMAL, inner);
             lines.push_back({});
-            lines.push_back({span("enter", Color::Light, true), span(" upload  ·  ", Color::Muted),
-                             span("esc", Color::Light, true), span(" cancel", Color::Muted)});
+            lines.push_back({span("enter", Color::Light, true), span(" " + tr("upload") + "  ·  ", Color::Muted),
+                             span("esc", Color::Light, true), span(" " + tr("cancel"), Color::Muted)});
             break;
         }
         case Modal::Kind::Notice:
-            heading = "Notice";
+            heading = tr("Notice");
             lines = wrapped(modal.text, A_NORMAL, inner);
             break;
     }
@@ -1021,7 +1030,7 @@ void draw(App& app) {
     }
     draw_footer(app, footer);
     if (app.options.demo) {
-        std::string label = " DEMO · no disks will be changed ";
+        std::string label = " " + tr("DEMO · no disks will be changed") + " ";
         int width = std::min(static_cast<int>(util::width(label)), screen.w);
         put(0, screen.w - width, label, bg(Color::Warn), width);
     }

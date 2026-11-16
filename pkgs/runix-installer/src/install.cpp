@@ -300,6 +300,7 @@ void install(const Plan& plan, Runner& runner) {
     settings.bluetooth = plan.bluetooth;
     settings.battery = plan.battery;
     settings.disk_modules = plan.disk_modules;
+    settings.extra_configuration = plan.extra_configuration;
     if (!plan.disk_modules.empty()) {
         std::string found;
         for (const auto& module : plan.disk_modules) found += " " + module;

@@ -1,4 +1,6 @@
 #include "app.hpp"
+#include "i18n.hpp"
+#include "json.hpp"
 
 #include <algorithm>
 #include <cstdio>
@@ -40,22 +42,22 @@ std::string new_host_id() {
 
 const char* title(Screen screen) {
     switch (screen) {
-        case Screen::Welcome: return "Welcome";
-        case Screen::Network: return "Network";
-        case Screen::Disk: return "Disk";
-        case Screen::Bootloader: return "Boot loader";
-        case Screen::Kernel: return "Kernel";
-        case Screen::Partitioning: return "Partitioning";
-        case Screen::Partitions: return "Partitions";
-        case Screen::Filesystem: return "Filesystem";
-        case Screen::Account: return "Account";
-        case Screen::Timezone: return "Time zone";
-        case Screen::Desktop: return "Desktop";
-        case Screen::Connection: return "Connection";
-        case Screen::Review: return "Review";
-        case Screen::Installing: return "Install";
-        case Screen::Failed: return "Install failed";
-        case Screen::Done: return "Done";
+        case Screen::Welcome: return N_("Welcome");
+        case Screen::Network: return N_("Network");
+        case Screen::Disk: return N_("Disk");
+        case Screen::Bootloader: return N_("Boot loader");
+        case Screen::Kernel: return N_("Kernel");
+        case Screen::Partitioning: return N_("Partitioning");
+        case Screen::Partitions: return N_("Partitions");
+        case Screen::Filesystem: return N_("Filesystem");
+        case Screen::Account: return N_("Account");
+        case Screen::Timezone: return N_("Time zone");
+        case Screen::Desktop: return N_("Desktop");
+        case Screen::Connection: return N_("Connection");
+        case Screen::Review: return N_("Review");
+        case Screen::Installing: return N_("Install");
+        case Screen::Failed: return N_("Install failed");
+        case Screen::Done: return N_("Done");
     }
     return "";
 }
@@ -97,6 +99,61 @@ App::App(Options options_, std::shared_ptr<Queue> queue)
     gpus = system_probe::gpus(options.demo);
     devices = system_probe::devices(options.demo);
     nvidia_device = gpus.nvidia;
+    apply_defaults();
+}
+
+namespace {
+
+template <typename T, std::size_t N>
+void preselect(ListState& list, const std::array<T, N>& choices, const std::string& wanted) {
+    if (wanted.empty()) return;
+    for (std::size_t index = 0; index < N; ++index)
+        if (wanted == config::id(choices[index])) list.select(index);
+}
+
+}  // namespace
+
+std::string read_defaults(const std::string& text, Options::Defaults& defaults) {
+    auto root = json::parse(text);
+    if (!root || !root->is_object()) return "not a JSON object";
+    auto take = [&](const char* key, std::string& into) {
+        if (auto value = (*root)[key].string()) into = *value;
+    };
+    take("language", defaults.language);
+    take("host", defaults.host);
+    take("user", defaults.user);
+    take("timezone", defaults.timezone);
+    take("bootloader", defaults.bootloader);
+    take("kernel", defaults.kernel);
+    take("filesystem", defaults.filesystem);
+    take("desktop", defaults.desktop);
+    take("connection", defaults.connection);
+    take("extraConfiguration", defaults.extra_configuration);
+    return "";
+}
+
+void App::apply_defaults() {
+    const auto& wanted = options.defaults;
+    if (!wanted.language.empty()) i18n::use(wanted.language);
+    if (!wanted.host.empty() && config::valid_host(wanted.host)) host.value = wanted.host;
+    if (!wanted.user.empty() && config::valid_user(wanted.user)) user.value = wanted.user;
+    if (!wanted.timezone.empty()) {
+        auto found = std::find(zones.begin(), zones.end(), wanted.timezone);
+        if (found != zones.end()) zone_list.select(static_cast<std::size_t>(found - zones.begin()));
+    }
+    preselect(bootloader_list, config::loaders, wanted.bootloader);
+    preselect(kernel_list, config::kernels, wanted.kernel);
+    preselect(filesystem_list, config::filesystems, wanted.filesystem);
+    preselect(desktop_list, config::desktops, wanted.desktop);
+    preselect(connection_list, config::networks, wanted.connection);
+}
+
+void App::cycle_language() {
+    const auto& all = i18n::languages();
+    if (all.size() < 2) return;
+    std::size_t index = 0;
+    while (index < all.size() && all[index].code != i18n::current()) ++index;
+    i18n::use(all[(index + 1) % all.size()].code);
 }
 
 App::~App() {
@@ -150,35 +207,35 @@ config::Network App::connection() const {
 
 std::string App::graphics_summary() const {
     std::vector<std::string> parts;
-    if (nvidia_device) parts.push_back(std::string("NVIDIA (proprietary, ") + config::nvidia_driver(*nvidia_device).branch + ")");
+    if (nvidia_device) parts.push_back(i18n::format("NVIDIA (proprietary, {})", {config::nvidia_driver(*nvidia_device).branch}));
     if (gpus.amd) parts.push_back("AMD");
     if (gpus.intel) parts.push_back("Intel");
-    if (parts.empty()) return "no GPU found, generic drivers";
+    if (parts.empty()) return tr("no GPU found, generic drivers");
     std::string text;
     for (const auto& part : parts) text += (text.empty() ? "" : " + ") + part;
     return text;
 }
 
 std::vector<std::pair<std::string, std::string>> App::summary() const {
-    std::string disk_text = "none";
+    std::string disk_text = tr("none");
     if (const auto* chosen = disk()) {
         disk_text = chosen->path + "  " + util::format_size(chosen->size) + "  " + chosen->model;
     }
     return {
-        {"Disk", disk_text},
-        {"Layout", layout_summary()},
-        {"Boot loader", config::name(loader())},
-        {"Kernel", config::name(kernel())},
-        {"Filesystem", config::name(filesystem())},
-        {"Boot mode", config::name(boot_mode)},
-        {"Graphics", graphics_summary()},
-        {"Hardware", std::string(devices.battery ? "laptop (battery)" : "desktop") +
+        {N_("Disk"), disk_text},
+        {N_("Layout"), layout_summary()},
+        {N_("Boot loader"), tr(config::name(loader()))},
+        {N_("Kernel"), tr(config::name(kernel()))},
+        {N_("Filesystem"), tr(config::name(filesystem()))},
+        {N_("Boot mode"), config::name(boot_mode)},
+        {N_("Graphics"), graphics_summary()},
+        {N_("Hardware"), tr(devices.battery ? N_("laptop (battery)") : N_("desktop")) +
                          (devices.bluetooth ? ", Bluetooth" : "")},
-        {"Host name", host.value},
-        {"User", user.value},
-        {"Time zone", timezone()},
-        {"Desktop", config::name(desktop())},
-        {"Connection", config::name(connection())},
+        {N_("Host name"), host.value},
+        {N_("User"), user.value},
+        {N_("Time zone"), timezone()},
+        {N_("Desktop"), tr(config::name(desktop()))},
+        {N_("Connection"), tr(config::name(connection()))},
     };
 }
 
@@ -263,10 +320,11 @@ install::DiskLayout App::layout() const {
 std::string App::layout_summary() const {
     auto chosen = layout();
     if (chosen.kind == install::DiskLayout::Kind::Automatic) {
-        return "Automatic: erase the disk, 1 GiB boot, root on the rest";
+        return tr("Automatic: erase the disk, 1 GiB boot, root on the rest");
     }
-    return "Manual: boot " + chosen.boot + " (" + (chosen.format_boot ? "format" : "keep") + "), root " +
-           chosen.root + " (format)";
+    return i18n::format(chosen.format_boot ? N_("Manual: boot {} (format), root {} (format)")
+                                            : N_("Manual: boot {} (keep), root {} (format)"),
+                        {chosen.boot, chosen.root});
 }
 
 void App::refresh_partitions() {
@@ -329,22 +387,22 @@ void App::toggle_format_boot() {
 
 std::string App::check_manual() const {
     const auto* boot = partition(boot_partition);
-    if (!boot) return "Choose a boot partition with b.";
+    if (!boot) return tr("Choose a boot partition with b.");
     const auto* root = partition(root_partition);
-    if (!root) return "Choose a root partition with r.";
-    if (boot->mounted || root->mounted) return "Unmount the chosen partitions first.";
+    if (!root) return tr("Choose a root partition with r.");
+    if (boot->mounted || root->mounted) return tr("Unmount the chosen partitions first.");
     if (boot->size < minimum_boot_bytes) {
-        return "The boot partition needs at least " + util::format_size(minimum_boot_bytes) + ".";
+        return i18n::format("The boot partition needs at least {}.", {util::format_size(minimum_boot_bytes)});
     }
-    if (!format_boot && !boot->is_vfat()) return "Only a FAT boot partition can be kept; press f to format it.";
+    if (!format_boot && !boot->is_vfat()) return tr("Only a FAT boot partition can be kept; press f to format it.");
     bool needs_bios_boot = loader() == config::BootLoader::Grub && boot_mode == config::BootMode::Bios;
     bool has_bios_boot = std::any_of(partitions.begin(), partitions.end(),
                                      [](const auto& candidate) { return candidate.is_bios_boot(); });
     if (needs_bios_boot && !has_bios_boot) {
-        return "GRUB on a BIOS machine needs a 1 MiB \"BIOS boot\" partition. Press e to create one.";
+        return tr("GRUB on a BIOS machine needs a 1 MiB \"BIOS boot\" partition. Press e to create one.");
     }
     if (root->size < minimum_root_bytes) {
-        return "The root partition needs at least " + util::format_size(minimum_root_bytes) + ".";
+        return i18n::format("The root partition needs at least {}.", {util::format_size(minimum_root_bytes)});
     }
     return "";
 }
@@ -398,13 +456,13 @@ void App::back() {
 void App::submit_account() {
     form_error.reset();
     if (!config::valid_host(host.value)) {
-        form_error = "Host names use letters, digits, and hyphens, and cannot start with a hyphen.";
+        form_error = tr("Host names use letters, digits, and hyphens, and cannot start with a hyphen.");
     } else if (!config::valid_user(user.value)) {
-        form_error = "User names use lowercase letters, digits, hyphens, and underscores, and cannot be root.";
+        form_error = tr("User names use lowercase letters, digits, hyphens, and underscores, and cannot be root.");
     } else if (password.value.empty()) {
-        form_error = "The password cannot be empty.";
+        form_error = tr("The password cannot be empty.");
     } else if (password.value != confirm.value) {
-        form_error = "The passwords do not match.";
+        form_error = tr("The passwords do not match.");
     }
     if (!form_error) advance();
 }
@@ -432,7 +490,7 @@ void App::start_install() {
     const auto* chosen = disk();
     if (!chosen) return;
     if (!take_lock()) {
-        notice("Another session is already installing.");
+        notice(tr("Another session is already installing."));
         return;
     }
     install::Plan plan;
@@ -457,6 +515,7 @@ void App::start_install() {
     plan.bluetooth = devices.bluetooth;
     plan.battery = devices.battery;
     if (!options.demo) plan.disk_modules = system_probe::disk_modules("/sys", plan.disk);
+    plan.extra_configuration = options.defaults.extra_configuration;
     log.clear();
     scroll = 0;
     phase = 0;
@@ -489,7 +548,7 @@ void App::on_message(Message message) {
         case Message::Kind::Connected:
             connecting.reset();
             if (!message.error.empty()) {
-                notice("Could not connect: " + message.error);
+                notice(i18n::format("Could not connect: {}", {message.error}));
             } else if (options.demo) {
                 online = OnlineState::Online;
             } else {
@@ -560,28 +619,31 @@ void App::tick() {
 }
 
 std::vector<std::pair<std::string, std::string>> App::hints() const {
-    if (modal) return {{"enter", "confirm"}, {"esc", "cancel"}};
+    if (modal) return {{"enter", N_("confirm")}, {"esc", N_("cancel")}};
     switch (screen) {
-        case Screen::Welcome: return {{"enter", "begin"}, {"ctrl+c", "shell"}};
+        case Screen::Welcome:
+            if (i18n::languages().size() > 1)
+                return {{"enter", N_("begin")}, {"l", N_("language")}, {"ctrl+c", N_("shell")}};
+            return {{"enter", N_("begin")}, {"ctrl+c", N_("shell")}};
         case Screen::Network:
             if (wireless) {
-                return {{"enter", "continue / join"}, {"o", "other"}, {"r", "rescan"}, {"s", "skip"}, {"esc", "back"}};
+                return {{"enter", N_("continue / join")}, {"o", N_("other")}, {"r", N_("rescan")}, {"s", N_("skip")}, {"esc", N_("back")}};
             }
-            return {{"enter", "continue"}, {"s", "skip"}, {"esc", "back"}};
-        case Screen::Account: return {{"tab", "next"}, {"enter", "continue"}, {"esc", "back"}};
-        case Screen::Timezone: return {{"type", "search"}, {"enter", "continue"}, {"esc", "back"}};
+            return {{"enter", N_("continue")}, {"s", N_("skip")}, {"esc", N_("back")}};
+        case Screen::Account: return {{"tab", N_("next")}, {"enter", N_("continue")}, {"esc", N_("back")}};
+        case Screen::Timezone: return {{"type", N_("search")}, {"enter", N_("continue")}, {"esc", N_("back")}};
         case Screen::Partitions:
-            return {{"b", "boot"}, {"r", "root"}, {"f", "format boot"}, {"e", "cfdisk"}, {"enter", "continue"}, {"esc", "back"}};
-        case Screen::Review: return {{"enter", "install"}, {"esc", "back"}};
+            return {{"b", N_("boot")}, {"r", N_("root")}, {"f", N_("format boot")}, {"e", N_("cfdisk")}, {"enter", N_("continue")}, {"esc", N_("back")}};
+        case Screen::Review: return {{"enter", N_("install")}, {"esc", N_("back")}};
         case Screen::Installing:
-            if (done_while_playing) return {{"enter", "continue"}};
+            if (done_while_playing) return {{"enter", N_("continue")}};
             if (game) return game->hints();
-            if (hub_open) return {{"up/down", "choose"}, {"enter", "play"}, {"esc", "back to the log"}};
-            return {{"g", "games"}, {"pgup/pgdn", "scroll log"}};
+            if (hub_open) return {{"up/down", N_("choose")}, {"enter", N_("play")}, {"esc", N_("back to the log")}};
+            return {{"g", N_("games")}, {"pgup/pgdn", N_("scroll log")}};
         case Screen::Failed:
-            return {{"r", "retry"}, {"u", "upload log"}, {"b", "change settings"}, {"s", "shell"}, {"pgup/pgdn", "log"}};
-        case Screen::Done: return {{"enter", "select"}};
-        default: return {{"up/down", "select"}, {"enter", "continue"}, {"esc", "back"}};
+            return {{"r", N_("retry")}, {"u", N_("upload log")}, {"b", N_("change settings")}, {"s", N_("shell")}, {"pgup/pgdn", N_("log")}};
+        case Screen::Done: return {{"enter", N_("select")}};
+        default: return {{"up/down", N_("select")}, {"enter", N_("continue")}, {"esc", N_("back")}};
     }
 }
 
@@ -600,6 +662,7 @@ void App::on_key(const Key& key) {
     switch (screen) {
         case Screen::Welcome:
             if (key.code == Key::Code::Enter) advance();
+            if (key.is('l')) cycle_language();
             break;
         case Screen::Network:
             on_network_key(key);
@@ -636,7 +699,7 @@ void App::on_key(const Key& key) {
             if (key.code == Key::Code::Enter) {
                 std::string problem = config::check_kernel(kernel(), filesystem());
                 if (!problem.empty()) {
-                    filesystem_error = problem;
+                    filesystem_error = tr(problem);
                     break;
                 }
             }
@@ -692,7 +755,7 @@ void App::on_key(const Key& key) {
         case Screen::Done:
             if (key.code == Key::Code::Enter && done_list.selected == 2u) {
                 if (options.demo) {
-                    notice("Demo mode does not open a chroot.");
+                    notice(tr("Demo mode does not open a chroot."));
                 } else {
                     external = External{External::Kind::Chroot, install::target};
                 }
@@ -891,7 +954,7 @@ void App::on_partitions_key(const Key& key) {
         toggle_format_boot();
     } else if (key.is('e')) {
         if (options.demo) {
-            notice("Demo mode does not open cfdisk.");
+            notice(tr("Demo mode does not open cfdisk."));
         } else if (const auto* chosen = disk()) {
             external = External{External::Kind::EditPartitions, chosen->path};
         }

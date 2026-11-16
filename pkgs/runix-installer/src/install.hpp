@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "config.hpp"
+#include "i18n.hpp"
 
 namespace install {
 
@@ -18,7 +19,8 @@ inline constexpr const char* target = "/mnt";
 inline constexpr std::uint64_t boot_size = 1024ull * 1024 * 1024;
 
 inline constexpr std::array<const char*, 6> phases{
-    "Prepare disk", "Format filesystems", "Mount target", "Write configuration", "Install system", "Finish",
+    N_("Prepare disk"), N_("Format filesystems"), N_("Mount target"),
+    N_("Write configuration"), N_("Install system"), N_("Finish"),
 };
 /// How much of the overall bar each phase fills. Installing is nearly all of it.
 inline constexpr std::array<int, 6> phase_weights{3, 3, 2, 2, 85, 5};
@@ -78,6 +80,8 @@ struct Plan {
     bool bluetooth = false;
     bool battery = false;
     std::vector<std::string> disk_modules;
+    /// Nix added to configuration.nix as is.
+    std::string extra_configuration;
 };
 
 /// What Nix reports while the system is installed.

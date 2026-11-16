@@ -12,8 +12,11 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <cwchar>
+#include <fstream>
+#include <sstream>
 
 #include "app.hpp"
+#include "i18n.hpp"
 #include "process.hpp"
 #include "report.hpp"
 #include "system.hpp"
@@ -27,7 +30,14 @@ constexpr const char* usage =
     "Options:\n"
     "  --demo       Walk through the installer without changing anything\n"
     "  --demo-fail  Like --demo, and end with a failed installation\n"
-    "  -h, --help   Show this help\n";
+    "  --language CODE\n"
+    "               Start in this language, from the translation catalogs\n"
+    "  -h, --help   Show this help\n"
+    "\n"
+    "Environment:\n"
+    "  RUNIX_INSTALLER_TRANSLATIONS  Directories of <code>.json catalogs, colon-separated\n"
+    "  RUNIX_INSTALLER_SETTINGS      A JSON file of preselected choices\n"
+    "  RUNIX_INSTALLER_LANGUAGE      The starting language, like --language\n";
 
 /// Mounts the kernel filesystems in a private namespace, so they disappear
 /// with the shell, and points /run/current-system at the new generation.
@@ -187,6 +197,7 @@ Exit run(Options options) {
 int main(int argc, char** argv) {
     bool demo = false;
     bool demo_fail = false;
+    std::optional<std::string> language;
     for (int index = 1; index < argc; ++index) {
         std::string argument = argv[index];
         if (argument == "--demo") {
@@ -194,6 +205,8 @@ int main(int argc, char** argv) {
         } else if (argument == "--demo-fail") {
             demo = true;
             demo_fail = true;
+        } else if (argument == "--language" && index + 1 < argc) {
+            language = argv[++index];
         } else if (argument == "-h" || argument == "--help") {
             std::fputs(usage, stdout);
             return 0;
@@ -223,6 +236,30 @@ int main(int argc, char** argv) {
     options.flake = env("RUNIX_INSTALL_FLAKE").value_or("github:runix-community/runix");
     options.zoneinfo = system_probe::find_zoneinfo(
         {env("RUNIX_ZONEINFO"), env("TZDIR"), std::string("/usr/share/zoneinfo"), std::string("/etc/zoneinfo")});
+
+    if (auto directories = env("RUNIX_INSTALLER_TRANSLATIONS")) {
+        const std::string& list = *directories;
+        for (std::size_t start = 0; start <= list.size();) {
+            std::size_t end = list.find(':', start);
+            if (end == std::string::npos) end = list.size();
+            if (end > start)
+                for (const auto& problem : i18n::load(list.substr(start, end - start)))
+                    std::fprintf(stderr, "runix-installer: %s\n", problem.c_str());
+            start = end + 1;
+        }
+    }
+    if (auto path = env("RUNIX_INSTALLER_SETTINGS")) {
+        std::ifstream file(*path);
+        std::stringstream text;
+        text << file.rdbuf();
+        std::string problem = file ? read_defaults(text.str(), options.defaults) : "cannot be read";
+        if (!problem.empty()) std::fprintf(stderr, "runix-installer: %s: %s\n", path->c_str(), problem.c_str());
+    }
+    if (!language) language = env("RUNIX_INSTALLER_LANGUAGE");
+    if (language) options.defaults.language = *language;
+    if (!options.defaults.language.empty() && !i18n::use(options.defaults.language))
+        std::fprintf(stderr, "runix-installer: no translation for %s, using English\n",
+                     options.defaults.language.c_str());
 
     set_console_palette(true);
     start_screen();

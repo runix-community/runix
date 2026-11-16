@@ -10,6 +10,7 @@
 
 #include "../src/app.hpp"
 #include "../src/config.hpp"
+#include "../src/i18n.hpp"
 #include "../src/install.hpp"
 #include "../src/json.hpp"
 #include "../src/nixlog.hpp"
@@ -105,7 +106,7 @@ TEST(the_chosen_boot_loader_is_enabled) {
 TEST(the_default_kernel_writes_no_package_set) {
     auto text = config::configuration(settings());
     CHECK(!has(text, "runix.kernel.packageSet"));
-    CHECK(has(text, "{ pkgs, ... }:"));
+    CHECK(has(text, "{ config, lib, pkgs, ... }:"));
     CHECK(!has(config::flake(settings()), "cachyos"));
 }
 
@@ -131,7 +132,7 @@ TEST(cachyos_kernels_bring_their_flake_and_cache) {
     // The cached kernels were built with the flake's own nixpkgs.
     CHECK(!has(flake_text, "follows"));
     auto text = config::configuration(value);
-    CHECK(has(text, "{ pkgs, nix-cachyos-kernel, ... }:"));
+    CHECK(has(text, "{ config, lib, pkgs, nix-cachyos-kernel, ... }:"));
     CHECK(has(text, "runix.kernel.packageSet = "
                     "nix-cachyos-kernel.legacyPackages.x86_64-linux.linuxPackages-cachyos-bore;"));
 }
@@ -1037,6 +1038,44 @@ TEST(chroot_is_offered_after_installing) {
     // Demo mode explains instead of opening a shell.
     CHECK(app.modal && app.modal->kind == Modal::Kind::Notice);
     CHECK(!app.external);
+}
+
+TEST(translations_replace_text_and_fall_back_to_english) {
+    CHECK(i18n::add("xx", R"({"language": "Test", "strings": {"Welcome": "Hallo", "Joining {}...": "{} wird verbunden"}})"));
+    CHECK(!i18n::add("broken", "{not json"));
+    CHECK(i18n::use("xx"));
+    CHECK(tr("Welcome") == "Hallo");
+    CHECK(tr("Disk") == "Disk");
+    CHECK(i18n::format("Joining {}...", {"home"}) == "home wird verbunden");
+    CHECK(!i18n::use("nope"));
+    CHECK(i18n::current() == "xx");
+    CHECK(i18n::use("en"));
+    CHECK(tr("Welcome") == "Welcome");
+}
+
+TEST(settings_preselect_the_installer_choices) {
+    Options options;
+    options.demo = true;
+    options.zoneinfo = "/nonexistent";
+    CHECK(read_defaults(R"({"host": "box", "kernel": "cachyos", "bootloader": "grub", "filesystem": "btrfs",
+                             "desktop": "blxshell-zwwm", "extraConfiguration": "programs.git.enable = true;"})",
+                        options.defaults).empty());
+    CHECK(!read_defaults("[]", options.defaults).empty());
+    App app(options, queue);
+    CHECK(app.host.value == "box");
+    CHECK(app.kernel() == config::Kernel::Cachyos);
+    CHECK(app.loader() == config::BootLoader::Grub);
+    CHECK(app.filesystem() == config::Filesystem::Btrfs);
+    CHECK(app.desktop() == config::Desktop::BlxshellZwwm);
+}
+
+TEST(extra_configuration_lands_in_configuration_nix) {
+    config::Settings settings;
+    settings.host = "box";
+    settings.user = "me";
+    settings.extra_configuration = "programs.git.enable = true;\n";
+    std::string text = config::configuration(settings);
+    CHECK(util::contains(text, "\n  programs.git.enable = true;\n}"));
 }
 
 }  // namespace
