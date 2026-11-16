@@ -97,7 +97,22 @@ in
       ''
     ];
     runix.services.elogind = {
-      command = "${package}/libexec/elogind";
+      # elogind reloads its sessions from /run/systemd/sessions when it
+      # restarts (a rebuild switch). One whose leader process is gone makes
+      # it abort on an assertion, and runit restarts it into the same abort:
+      # drop those first.
+      script = ''
+        for session in /run/systemd/sessions/*; do
+          [ -f "$session" ] || continue
+          leader=$(${pkgs.gnused}/bin/sed -n 's/^LEADER=//p' "$session")
+          case "$leader" in
+            "" | 0 | *[!0-9]*) ;;
+            *) [ -d "/proc/$leader" ] && continue ;;
+          esac
+          ${pkgs.coreutils}/bin/rm -f "$session" "$session.ref"
+        done
+        exec ${package}/libexec/elogind
+      '';
       environment = {
         DBUS_SYSTEM_BUS_ADDRESS = "unix:path=/run/dbus/system_bus_socket";
       };

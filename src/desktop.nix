@@ -158,6 +158,9 @@ in
 
   config = lib.mkIf cfg.enable {
     runix.build.sessions = wrappedSessions;
+    # The document portal (file pickers in Flatpak and portal apps) mounts a
+    # FUSE file system; nothing autoloads fuse.
+    runix.kernel.modules = [ "fuse" ];
     assertions = [
       {
         assertion = config.runix.systemServices.dbus.enable;
