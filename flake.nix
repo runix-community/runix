@@ -42,6 +42,7 @@
           runix-install = pkgs.callPackage ./pkgs/runix-install { };
           runix-installer = pkgs.callPackage ./pkgs/runix-installer { inherit runix-install; };
           runixisogen = pkgs.callPackage ./pkgs/runixisogen { };
+          runix-boot-theme = pkgs.callPackage ./pkgs/runix-boot-theme { };
            bspwm = pkgs.bspwm;
            inherit (fetchPackages) fastfetch fastfetch-unwrapped pfetch;
            inherit (desktopPackages) hyprland labwc niri;
@@ -146,6 +147,7 @@
             runix-install
             runix-installer
             runixisogen
+            runix-boot-theme
              sxhkd
              shojiwm
              zwwm

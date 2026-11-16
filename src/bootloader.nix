@@ -25,6 +25,7 @@ let
     else
       "root=${configuredRoot.device} rootfstype=${configuredRoot.fsType} "
       + "rootflags=${lib.concatStringsSep "," configuredRoot.options}";
+  theme = loader.theme;
   grubPackage = if loader.grub.mode == "efi" then pkgs.grub2_efi else pkgs.grub2;
   installCommon = ''
     root="''${1:-/}"
@@ -199,6 +200,20 @@ let
       'set default=0' \
       'set timeout=${toString loader.timeout}' \
       ${lib.escapeShellArg loader.grub.extraConfig} >"$config_file"
+    ${lib.optionalString (theme != null) ''
+      ${pkgs.coreutils}/bin/rm -rf "$boot/grub/themes/runix"
+      ${pkgs.coreutils}/bin/mkdir -p "$boot/grub/themes"
+      ${pkgs.coreutils}/bin/cp -r --no-preserve=mode ${theme}/grub/runix "$boot/grub/themes/runix"
+      ${pkgs.coreutils}/bin/printf '%s\n' \
+        'insmod all_video' \
+        'insmod gfxterm' \
+        'insmod png' \
+        'set gfxmode=auto' \
+        'terminal_output gfxterm' \
+        'for font in rubik-15 rubik-20 rubik-bold-20 rubik-bold-40 spleen-24; do loadfont $prefix/themes/runix/$font.pf2; done' \
+        'set theme=$prefix/themes/runix/theme.txt' \
+        'export theme' >>"$config_file"
+    ''}
 
     first=1
     for link in "''${generations[@]}"; do
@@ -265,6 +280,11 @@ let
       'timeout: ${toString loader.timeout}' \
       'editor_enabled: ${if loader.limine.editorEnabled then "yes" else "no"}' \
       ${lib.escapeShellArg loader.limine.extraConfig} >"$config_file"
+    ${lib.optionalString (theme != null) ''
+      ${pkgs.coreutils}/bin/cp --no-preserve=mode ${theme}/limine/background.png "$boot/limine/runix-background.png"
+      ${pkgs.coreutils}/bin/cat ${theme}/limine/theme.conf >>"$config_file"
+      ${pkgs.coreutils}/bin/printf '%s\n' "wallpaper: boot():''${boot_path%/runix}/limine/runix-background.png" >>"$config_file"
+    ''}
 
     first=1
     for link in "''${generations[@]}"; do
@@ -333,6 +353,15 @@ in
       type = lib.types.ints.positive;
       default = 5;
       description = "Maximum number of system profile generations in the boot menu.";
+    };
+    theme = lib.mkOption {
+      type = lib.types.nullOr lib.types.package;
+      default = pkgs.callPackage ../pkgs/runix-boot-theme { };
+      defaultText = lib.literalExpression "the Runix boot theme";
+      description = ''
+        The boot menu's look: a package with a GRUB theme in grub/runix and
+        a Limine wallpaper and settings in limine/. Null keeps the plain menus.
+      '';
     };
     grub = {
       enable = lib.mkEnableOption "the GRUB bootloader";

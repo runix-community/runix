@@ -154,7 +154,11 @@ let
 
         mkdir -p iso_root/boot/limine iso_root/EFI/BOOT iso_root/runix
         cp -L ${cfg.build.system}/kernel ${cfg.build.system}/initrd iso_root/boot/
-        cp ${limineConfig} iso_root/boot/limine/limine.conf
+        theme=${pkgs.callPackage ../pkgs/runix-boot-theme { }}/limine
+        cp $theme/background.png iso_root/boot/limine/background.png
+        { cat $theme/theme.conf
+          echo 'wallpaper: boot():/boot/limine/background.png'
+          cat ${limineConfig}; } > iso_root/boot/limine/limine.conf
         cp "$limine_files"/limine-bios.sys "$limine_files"/limine-bios-cd.bin \
           "$limine_files"/limine-uefi-cd.bin iso_root/boot/limine/
         cp "$limine_files"/BOOTX64.EFI iso_root/EFI/BOOT/
