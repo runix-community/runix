@@ -56,6 +56,9 @@ let
     runtimeInputs = [
       pkgs.coreutils
       pkgs.dhcpcd
+      # For dhcpcd's resolv.conf hook, when connect starts dhcpcd itself.
+      pkgs.diffutils
+      pkgs.gnused
       pkgs.gnugrep
       pkgs.iproute2
       pkgs.util-linux

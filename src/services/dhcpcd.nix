@@ -11,7 +11,7 @@ let
     option domain_name_servers, domain_name, domain_search, host_name
     option classless_static_routes, interface_mtu
     nohook lookup-hostname
-    nohook resolv.conf
+    nohook hostname
     denyinterfaces lo peth* vif* tap* tun* virbr* vnet* vboxnet* sit*
   '';
 in
@@ -38,12 +38,21 @@ in
         mkdir -p /run/dhcpcd /var/db/dhcpcd /var/lib/dhcpcd
         chown dhcpcd:dhcpcd /var/db/dhcpcd /var/lib/dhcpcd
         ln -sfn ${dhcpcdConfig} /etc/dhcpcd.conf
+        # Until a lease names the network's own DNS servers, which dhcpcd
+        # then writes here: some networks block outside resolvers.
         rm -f /etc/resolv.conf
-        printf 'nameserver 1.1.1.1\n' > /etc/resolv.conf
+        printf 'nameserver 1.1.1.1\nnameserver 9.9.9.9\noptions timeout:2 attempts:3\n' > /etc/resolv.conf
       ''
     ];
     runix.services.dhcpcd = {
       command = "${pkgs.dhcpcd}/bin/dhcpcd --nodev -B -q -f ${dhcpcdConfig}";
+      # What dhcpcd's resolv.conf hook calls.
+      path = [
+        pkgs.coreutils
+        pkgs.diffutils
+        pkgs.gnused
+        pkgs.util-linux
+      ];
       after = [ "mdevd-coldplug" ];
     };
   };
