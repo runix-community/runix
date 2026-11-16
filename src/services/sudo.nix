@@ -8,7 +8,7 @@ let
   cfg = config.programs.sudo;
   sudoersSource = pkgs.writeText "runix-sudoers.in" ''
     Defaults env_reset
-    Defaults env_keep += "NIX_CONFIG NIX_PATH TERM TERMINFO TERMINFO_DIRS"
+    Defaults env_keep += "NIX_CONFIG NIX_PATH SVDIR TERM TERMINFO TERMINFO_DIRS"
     root ALL=(ALL:ALL) SETENV: ALL
     %wheel ALL=(ALL:ALL) SETENV: ALL
     ${cfg.extraConfig}

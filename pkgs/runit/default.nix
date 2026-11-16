@@ -24,6 +24,10 @@ stdenv.mkDerivation (finalAttrs: {
   postPatch = ''
     sed -i "s,\(#define RUNIT\) .*,\1 \"$out/bin/runit\"," src/runit.h
 
+    # Runix's services live in /run/runit/service: sv finds them there
+    # without SVDIR, as from sudo, su or a script.
+    substituteInPlace src/sv.c --replace-fail 'char *varservice ="/service/";' 'char *varservice ="/run/runit/service/";'
+
     # This test assumes access to the host user database.
     sed -i '/\.\/chkshsgr/d' src/Makefile
 
