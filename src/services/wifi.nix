@@ -34,6 +34,12 @@ let
       control="$control GROUP=wheel"
     fi
     ${pkgs.gnused}/bin/sed -i "s|^ctrl_interface=.*|ctrl_interface=$control|" ${configFile} || true
+    # wpa_cli makes its reply socket in client/: wheel must be able to write
+    # there too, or every user-side query fails. Sticky, like /tmp.
+    if [ "$control" != "DIR=${controlDirectory}" ]; then
+      ${pkgs.coreutils}/bin/chgrp wheel ${controlDirectory}/client || true
+      ${pkgs.coreutils}/bin/chmod 1770 ${controlDirectory}/client || true
+    fi
     chmod 0600 ${configFile}
   '';
   interfaceScript = ''

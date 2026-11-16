@@ -2,6 +2,7 @@
   imports = [
     ./bspwm.nix
     ./driftwm.nix
+    ./firefox.nix
     ./flatpak.nix
     ./gpu-screen-recorder.nix
     ./hyprland.nix

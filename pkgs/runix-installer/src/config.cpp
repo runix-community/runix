@@ -410,7 +410,8 @@ std::string configuration(const Settings& settings) {
                                : "  runix.systemServices.dhcpcd.enable = true;\n";
     std::string desktop;
     if (settings.desktop != Desktop::None) {
-        desktop = "  runix.desktop.enable = true;\n";
+        desktop = "  runix.desktop.enable = true;\n"
+                  "  programs.firefox.enable = true;\n";
         if (const char* chosen = program(settings.desktop)) {
             desktop += "  programs.hyprland.enable = false;\n";
             desktop += std::string("  programs.") + chosen + ".enable = true;\n";

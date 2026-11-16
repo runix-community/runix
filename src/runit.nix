@@ -521,6 +521,7 @@ let
     ln -s ${cfg.build.initrd}/initrd "$out/initrd"
     ln -s ${cfg.build.firmware}/lib/firmware "$out/firmware"
     ln -s ${cfg.build.environment} "$out/sw"
+    ${lib.optionalString cfg.desktop.enable "ln -s ${cfg.build.sessions} \"$out/sessions\""}
     ln -s ${cfg.build.packageManifest} "$out/package-manifest.json"
     ln -s ${activation} "$out/activate"
     ln -s ${verifyServices} "$out/verify-services"

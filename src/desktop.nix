@@ -18,14 +18,21 @@ let
     export XDG_SESSION_TYPE=wayland
     export XDG_DATA_DIRS=/run/current-system/sw/share
     export NIXOS_OZONE_WL=1
-    ${pkgs.dbus}/bin/dbus-run-session -- ${pkgs.runtimeShell} -c ${lib.escapeShellArg ''
-      ${lib.optionalString config.services.pipewire.enable ''
-        ${config.runix.build.pipewireSession} &
-        audio_supervisor=$!
-        trap 'kill -TERM "$audio_supervisor" 2>/dev/null || true; wait "$audio_supervisor" 2>/dev/null || true' EXIT INT TERM
-      ''}
-      ${programs.hyprland.package}/bin/start-hyprland
+    exec ${programs.hyprland.package}/bin/start-hyprland
+  '';
+
+  # Runs every graphical session: one session bus for it, and the user's
+  # audio (PipeWire, WirePlumber, the Pulse server) for as long as it lasts.
+  sessionWrapper = pkgs.writeShellScript "runix-session" ''
+    if [ -z "''${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
+      exec ${pkgs.dbus}/bin/dbus-run-session -- "$0" "$@"
+    fi
+    ${lib.optionalString config.services.pipewire.enable ''
+      ${config.runix.build.pipewireSession} &
+      audio=$!
+      trap 'kill -TERM "$audio" 2>/dev/null || true; wait "$audio" 2>/dev/null || true' EXIT INT TERM
     ''}
+    "$@"
   '';
 
   sessionPackage = pkgs.runCommand "runix-hyprland-session-data" { } ''
@@ -54,6 +61,17 @@ let
     pathsToLink = [ "/share/wayland-sessions" ];
   };
 
+  # The sessions every login screen offers, each started through the wrapper.
+  # Linked at /run/current-system/sessions.
+  wrappedSessions = pkgs.runCommand "runix-sessions" { } ''
+    mkdir -p "$out/share/wayland-sessions"
+    for file in ${waylandSessions}/share/wayland-sessions/*.desktop; do
+      [ -e "$file" ] || continue
+      ${pkgs.gnused}/bin/sed "s|^Exec=|Exec=${sessionWrapper} |" "$file" \
+        > "$out/share/wayland-sessions/''${file##*/}"
+    done
+  '';
+
   sddmConfig = pkgs.writeText "runix-sddm.conf" ''
     [General]
     DisplayServer=wayland
@@ -71,7 +89,7 @@ let
     HideShells=/bin/false
 
     [Wayland]
-    SessionDir=${waylandSessions}/share/wayland-sessions
+    SessionDir=${wrappedSessions}/share/wayland-sessions
     CompositorCommand=${pkgs.coreutils}/bin/env XDG_RUNTIME_DIR=/run/sddm ${desktopPackages.weston}/bin/weston --shell=kiosk
   '';
 
@@ -139,6 +157,7 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    runix.build.sessions = wrappedSessions;
     assertions = [
       {
         assertion = config.runix.systemServices.dbus.enable;

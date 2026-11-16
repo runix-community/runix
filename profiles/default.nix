@@ -1,7 +1,10 @@
 # The installer's desktop choices, as modules on top of base.nix.
 { }:
 let
-  desktop = extra: { runix.desktop.enable = true; } // extra;
+  desktop = extra: {
+    runix.desktop.enable = true;
+    programs.firefox.enable = true;
+  } // extra;
   only = program: desktop {
     programs.hyprland.enable = false;
     programs.${program}.enable = true;
