@@ -229,7 +229,6 @@ in
           [ "$(${pkgs.wpa_supplicant}/bin/wpa_cli -p ${controlDirectory} -i "$interface" ping)" = PONG ]
         '';
       };
-      dhcpcd.after = [ "wpa-supplicant" ];
     };
   };
 }
