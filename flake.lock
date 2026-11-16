@@ -8,11 +8,11 @@
         "vw": "vw"
       },
       "locked": {
-        "lastModified": 1794850034,
-        "narHash": "sha256-UbWXrmpi8EQgmVnyp1dcoD7KwLX5LqEEmvHw4IsOSpE=",
+        "lastModified": 1794853127,
+        "narHash": "sha256-8724w4QYky27sYmHrih4RUE5VpQCWIMvhOC7SWapPns=",
         "owner": "binarylinuxx",
         "repo": "dots",
-        "rev": "961729365177ac1524f672cce8f0bed5d1d1407c",
+        "rev": "4cbcc824a39aa5019d36bc9477890b99985baeb3",
         "type": "github"
       },
       "original": {
@@ -110,11 +110,11 @@
         "zwwm": "zwwm"
       },
       "locked": {
-        "lastModified": 1794850031,
-        "narHash": "sha256-Y7WJNWVl/ncginnwYSOqyNqD00npprTHqZ5ySDlQmuM=",
+        "lastModified": 1794853123,
+        "narHash": "sha256-quEX96N2vbS4SPAlpN7jiLZcp7pLADwsu/f1Wyvpbzc=",
         "owner": "binarylinuxx",
         "repo": "vw",
-        "rev": "b2d7a1ad1e5a4343bb1d39f9b3e6b9ebab9972db",
+        "rev": "0959b992c934d4837f5c61b0d415a4ec61b64da8",
         "type": "github"
       },
       "original": {
