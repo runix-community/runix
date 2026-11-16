@@ -203,12 +203,9 @@ NvidiaDriver nvidia_driver(std::uint32_t device) {
     return {"legacy_470", false, "Kepler"};
 }
 
-std::string check_kernel(Kernel kernel, Filesystem filesystem) {
-    // The CachyOS flake ships its own ZFS module, which need not match the
-    // ZFS tools Runix installs, so the pairing is not offered.
-    if (filesystem == Filesystem::Zfs && from_cachyos(kernel)) {
-        return N_("ZFS is not available with CachyOS kernels yet. Go back and pick another kernel.");
-    }
+std::string check_kernel(Kernel, Filesystem) {
+    // Every kernel works with every filesystem; ZFS on CachyOS uses the
+    // CachyOS flake's own zfs_cachyos (see hardware()).
     return "";
 }
 
@@ -316,7 +313,12 @@ std::string hardware(const Settings& settings) {
                        "  runix.zfs = {\n"
                        "    enable = true;\n"
                        "    # Pools remember the host that last used them; keep this as it is.\n"
-                       "    hostId = \"" + settings.zfs_host_id + "\";\n"
+                       "    hostId = \"" + settings.zfs_host_id + "\";\n" +
+                       (from_cachyos(settings.kernel)
+                            ? std::string("    # ZFS built by the CachyOS flake for its kernels.\n"
+                                          "    package = config.runix.kernel.packageSet.zfs_cachyos;\n"
+                                          "    modulePackage = config.runix.kernel.packageSet.zfs_cachyos;\n")
+                            : std::string()) +
                        "  };\n";
     }
     // The usual disk controllers, plus whatever this machine's root disk sits
@@ -362,13 +364,12 @@ std::string hardware(const Settings& settings) {
                     "  runix.systemServices.powerProfiles.enable = true;\n";
     }
 
-    std::string header = "{\n";
+    std::string header = "{ config, ... }:\n{\n";
     std::string nvidia;
     if (settings.nvidia_device) {
         const NvidiaDriver driver = nvidia_driver(*settings.nvidia_device);
         char device[8];
         std::snprintf(device, sizeof device, "%04x", static_cast<unsigned>(*settings.nvidia_device));
-        header = "{ config, ... }:\n{\n";
         nvidia = std::string("\n"
                              "  # NVIDIA GPU 10de:") + device + " (" + driver.generation + "): the proprietary driver.\n"
                  "  hardware.nvidia = {\n"

@@ -51,8 +51,11 @@ Commands partition_commands(const DiskLayout& layout, const std::string& disk);
 std::pair<std::string, std::string> targets(const DiskLayout& layout, const std::string& disk);
 /// For ZFS, `zfs_host_id` is the installed system's host ID, set before the
 /// pool is created.
+/// `compatible_pool` limits a new ZFS pool to OpenZFS 2.2 features, for
+/// kernels whose ZFS module may be older than the live system's tools.
 Commands format_commands(const DiskLayout& layout, config::Filesystem root_fs, const std::string& boot,
-                         const std::string& root, const std::string& zfs_host_id = "");
+                         const std::string& root, const std::string& zfs_host_id = "",
+                         bool compatible_pool = false);
 /// How to mount the new root at the target.
 std::vector<std::string> mount_root_command(config::Filesystem root_fs, const std::string& root);
 /// The arguments for runix-install, asking Nix for its machine-readable log.

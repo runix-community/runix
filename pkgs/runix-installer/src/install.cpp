@@ -52,7 +52,8 @@ std::pair<std::string, std::string> targets(const DiskLayout& layout, const std:
 }
 
 Commands format_commands(const DiskLayout& layout, config::Filesystem root_fs, const std::string& boot,
-                         const std::string& root, const std::string& zfs_host_id) {
+                         const std::string& root, const std::string& zfs_host_id,
+                         bool compatible_pool) {
     Commands commands;
     bool format_boot = layout.kind == DiskLayout::Kind::Automatic || layout.format_boot;
     if (format_boot) commands.push_back({"mkfs.fat", "-F32", "-n", "RUNIXBOOT", boot});
@@ -71,10 +72,14 @@ Commands format_commands(const DiskLayout& layout, config::Filesystem root_fs, c
             // the installed system's ID makes it that system's from the start.
             commands.push_back({"zgenhostid", "-f", zfs_host_id});
             commands.push_back({"modprobe", "zfs"});
-            commands.push_back({"zpool", "create", "-f", "-o", "ashift=12", "-o", "autotrim=on",
-                                "-O", "compression=zstd", "-O", "acltype=posixacl", "-O", "xattr=sa",
-                                "-O", "relatime=on", "-O", "dnodesize=auto", "-O", "normalization=formD",
-                                "-O", "mountpoint=none", "-O", "canmount=off", config::zfs_pool, root});
+            {
+                process::Arguments create{"zpool", "create", "-f", "-o", "ashift=12", "-o", "autotrim=on"};
+                if (compatible_pool) create.insert(create.end(), {"-o", "compatibility=openzfs-2.2-linux"});
+                create.insert(create.end(), {"-O", "compression=zstd", "-O", "acltype=posixacl", "-O", "xattr=sa",
+                                             "-O", "relatime=on", "-O", "dnodesize=auto", "-O", "normalization=formD",
+                                             "-O", "mountpoint=none", "-O", "canmount=off", config::zfs_pool, root});
+                commands.push_back(create);
+            }
             commands.push_back({"zfs", "create", "-o", "mountpoint=legacy", config::zfs_root_dataset});
             break;
     }
@@ -269,7 +274,9 @@ void install(const Plan& plan, Runner& runner) {
     wait_for_block_device(root);
 
     runner.phase(1);
-    runner.run_all(format_commands(plan.layout, plan.root_fs, boot, root, plan.zfs_host_id));
+    // The CachyOS flake's ZFS module can be older than the live system's tools.
+    runner.run_all(format_commands(plan.layout, plan.root_fs, boot, root, plan.zfs_host_id,
+                                   config::from_cachyos(plan.kernel)));
 
     runner.phase(2);
     make_directories(target);
