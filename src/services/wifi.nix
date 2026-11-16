@@ -28,7 +28,7 @@ let
     fi
     # Desktop shells (blxshell) join networks as the user, through the
     # control socket: let wheel use it, also in existing configs.
-    sed -i 's|^ctrl_interface=${controlDirectory}$|ctrl_interface=DIR=${controlDirectory} GROUP=wheel|' ${configFile}
+    ${pkgs.gnused}/bin/sed -i 's|^ctrl_interface=${controlDirectory}$|ctrl_interface=DIR=${controlDirectory} GROUP=wheel|' ${configFile} || true
     chmod 0600 ${configFile}
   '';
   interfaceScript = ''
