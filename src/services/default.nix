@@ -14,6 +14,7 @@
     ./seatd.nix
     ./sudo.nix
     ./sysctl.nix
+    ./web.nix
     ./tmpfiles.nix
     ./yggdrasil.nix
   ];

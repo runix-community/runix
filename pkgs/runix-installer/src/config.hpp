@@ -22,15 +22,17 @@ inline constexpr const char* zfs_pool = "rpool";
 inline constexpr const char* zfs_root_dataset = "rpool/root";
 
 enum class Desktop {
-    None, BlxshellZwwm, BlxshellHyprland, Hyprland, Labwc, Niri, Zwwm, Shojiwm, Driftwm,
+    None, Server, BlxshellZwwm, BlxshellHyprland, Hyprland, Labwc, Niri, Zwwm, Shojiwm, Driftwm,
 };
-inline constexpr std::array<Desktop, 9> desktops{
-    Desktop::None,     Desktop::BlxshellZwwm, Desktop::BlxshellHyprland,
+inline constexpr std::array<Desktop, 10> desktops{
+    Desktop::None,     Desktop::Server,       Desktop::BlxshellZwwm, Desktop::BlxshellHyprland,
     Desktop::Hyprland, Desktop::Labwc,        Desktop::Niri,
     Desktop::Zwwm,     Desktop::Shojiwm,      Desktop::Driftwm,
 };
 const char* name(Desktop desktop);
 const char* description(Desktop desktop);
+/// The heading a desktop is listed under; desktops keeps each group together.
+const char* group(Desktop desktop);
 /// The blxshell desktops come from its own flake, github:binarylinuxx/dots.
 bool with_blxshell(Desktop desktop);
 inline constexpr const char* blxshell_input = "github:binarylinuxx/dots";

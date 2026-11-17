@@ -23,6 +23,13 @@ let
 in
 {
   console = { };
+  server = {
+    runix.systemServices.openssh.enable = true;
+    runix.systemServices.caddy = {
+      enable = true;
+      sites.":80".root = "/srv/www";
+    };
+  };
   hyprland = desktop { };
   labwc = only "labwc";
   niri = only "niri";

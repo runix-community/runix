@@ -44,6 +44,7 @@ const char* description(Filesystem filesystem) {
 const char* name(Desktop desktop) {
     switch (desktop) {
         case Desktop::None: return N_("Console only");
+        case Desktop::Server: return N_("Server");
         case Desktop::BlxshellZwwm: return N_("blxshell on zwwm");
         case Desktop::BlxshellHyprland: return N_("blxshell on Hyprland");
         case Desktop::Hyprland: return N_("Hyprland");
@@ -59,6 +60,7 @@ const char* name(Desktop desktop) {
 const char* description(Desktop desktop) {
     switch (desktop) {
         case Desktop::None: return N_("a text console, add a desktop later");
+        case Desktop::Server: return N_("SSH and the Caddy web server");
         case Desktop::BlxshellZwwm: return N_("the Runix desktop: blxshell on the zwwm compositor");
         case Desktop::BlxshellHyprland: return N_("blxshell on Hyprland");
         case Desktop::Hyprland: return N_("dynamic tiling compositor");
@@ -76,6 +78,7 @@ const char* id(Filesystem filesystem) { return name(filesystem); }
 const char* id(Desktop desktop) {
     switch (desktop) {
         case Desktop::None: return "none";
+        case Desktop::Server: return "server";
         case Desktop::BlxshellZwwm: return "blxshell-zwwm";
         case Desktop::BlxshellHyprland: return "blxshell-hyprland";
         case Desktop::Hyprland: return "hyprland";
@@ -106,6 +109,22 @@ const char* id(Kernel kernel) {
     return "";
 }
 
+const char* group(Desktop desktop) {
+    switch (desktop) {
+        case Desktop::None:
+        case Desktop::Server: return N_("Without a desktop");
+        case Desktop::BlxshellZwwm:
+        case Desktop::BlxshellHyprland: return N_("Desktops");
+        case Desktop::Hyprland:
+        case Desktop::Labwc:
+        case Desktop::Niri:
+        case Desktop::Zwwm:
+        case Desktop::Shojiwm:
+        case Desktop::Driftwm: return N_("Window managers");
+    }
+    return "";
+}
+
 bool with_blxshell(Desktop desktop) {
     return desktop == Desktop::BlxshellZwwm || desktop == Desktop::BlxshellHyprland;
 }
@@ -113,6 +132,7 @@ bool with_blxshell(Desktop desktop) {
 static const char* program(Desktop desktop) {
     switch (desktop) {
         case Desktop::None:
+        case Desktop::Server:
         case Desktop::BlxshellHyprland:
         case Desktop::Hyprland: return nullptr;
         case Desktop::BlxshellZwwm: return "zwwm";
@@ -413,7 +433,28 @@ std::string configuration(const Settings& settings) {
                                ? "  runix.systemServices.wifi.enable = true;\n"
                                : "  runix.systemServices.dhcpcd.enable = true;\n";
     std::string desktop;
-    if (settings.desktop != Desktop::None) {
+    if (settings.desktop == Desktop::Server) {
+        desktop = "  # A server: log in over SSH, serve websites with Caddy.\n"
+                  "  runix.systemServices.openssh.enable = true;\n"
+                  "  runix.systemServices.caddy = {\n"
+                  "    enable = true;\n"
+                  "    # Any request on port 80, for your local network. Put the files in\n"
+                  "    # /srv/www (sudo chown -R " + settings.user + " /srv/www to edit them yourself).\n"
+                  "    sites.\":80\".root = \"/srv/www\";\n"
+                  "    # Your domain, through the tunnel below:\n"
+                  "    # sites.\"example.org\".root = \"/srv/www/example.org\";\n"
+                  "  };\n"
+                  "  # Put the sites on your domain without opening ports; Cloudflare serves\n"
+                  "  # HTTPS. As root: cloudflared tunnel login, then cloudflared tunnel create\n"
+                  "  # NAME prints the ID below and writes /root/.cloudflared/ID.json: move that\n"
+                  "  # to /var/lib/cloudflared/tunnel.json. cloudflared tunnel route dns NAME\n"
+                  "  # example.org points the domain at it.\n"
+                  "  runix.packages = [ pkgs.cloudflared ];\n"
+                  "  # runix.systemServices.cloudflared = {\n"
+                  "  #   enable = true;\n"
+                  "  #   tunnelId = \"00000000-0000-0000-0000-000000000000\";\n"
+                  "  # };\n";
+    } else if (settings.desktop != Desktop::None) {
         desktop = "  runix.desktop.enable = true;\n"
                   "  programs.firefox.enable = true;\n";
         if (const char* chosen = program(settings.desktop)) {

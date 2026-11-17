@@ -627,9 +627,27 @@ void draw_filesystem(App& app, Rect area) {
 }
 
 void draw_desktop(App& app, Rect area) {
-    std::vector<Line> items;
-    for (auto desktop : config::desktops) items.push_back(entry(tr(config::name(desktop)), tr(config::description(desktop)), 22));
-    choice_list(area, items, app.desktop_list);
+    // A heading above each group; the headings are rows of their own, so the
+    // selection is mapped from the choice to its row and back for scrolling.
+    std::vector<Line> rows;
+    std::optional<std::size_t> selected_row;
+    const char* heading = nullptr;
+    for (std::size_t index = 0; index < config::desktops.size(); ++index) {
+        auto desktop = config::desktops[index];
+        if (const char* group = config::group(desktop); !heading || std::string(group) != heading) {
+            if (heading) rows.push_back({});
+            rows.push_back({span(tr(group), Color::Muted, true)});
+            heading = group;
+        }
+        if (app.desktop_list.selected == index) selected_row = rows.size();
+        rows.push_back(entry(tr(config::name(desktop)), tr(config::description(desktop)), 22));
+    }
+    ListState state{selected_row, app.desktop_list.offset};
+    // Keep a group's heading in view when its first choice is selected.
+    if (selected_row && *selected_row > 0 && rows[*selected_row - 1].size() == 1 && *selected_row - 1 < state.offset)
+        state.offset = *selected_row - 1;
+    choice_list(area, rows, state);
+    app.desktop_list.offset = state.offset;
 }
 
 void draw_connection(App& app, Rect area) {
