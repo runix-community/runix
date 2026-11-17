@@ -161,6 +161,12 @@ in
     # The document portal (file pickers in Flatpak and portal apps) mounts a
     # FUSE file system; nothing autoloads fuse.
     runix.kernel.modules = [ "fuse" ];
+    # USB sticks, SD cards and Windows partitions.
+    runix.supportedFilesystems = [
+      "vfat"
+      "exfat"
+      "ntfs3"
+    ];
     assertions = [
       {
         assertion = config.runix.systemServices.dbus.enable;

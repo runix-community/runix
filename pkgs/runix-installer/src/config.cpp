@@ -23,6 +23,8 @@ const char* name(Filesystem filesystem) {
     switch (filesystem) {
         case Filesystem::Ext4: return "ext4";
         case Filesystem::Btrfs: return "btrfs";
+        case Filesystem::Xfs: return "xfs";
+        case Filesystem::F2fs: return "f2fs";
         case Filesystem::Zfs: return "zfs";
     }
     return "";
@@ -32,6 +34,8 @@ const char* description(Filesystem filesystem) {
     switch (filesystem) {
         case Filesystem::Ext4: return N_("Simple and reliable");
         case Filesystem::Btrfs: return N_("Checksums and compression support");
+        case Filesystem::Xfs: return N_("Fast with large files and busy disks");
+        case Filesystem::F2fs: return N_("Made for flash: SSDs, SD cards and eMMC");
         case Filesystem::Zfs: return N_("Pooled storage with snapshots, checksums and compression");
     }
     return "";

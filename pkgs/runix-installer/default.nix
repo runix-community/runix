@@ -4,6 +4,7 @@
   curl,
   dosfstools,
   e2fsprogs,
+  f2fs-tools,
   flakeUrl ? "github:runix-community/runix",
   gptfdisk,
   kmod,
@@ -11,6 +12,7 @@
   linkFarm,
   python3Minimal,
   writeText,
+  xfsprogs,
   logPasteUrl ? "https://paste.rs/",
   # Extra catalogs, by language code: a JSON file, or the catalog as an
   # attribute set ({ language = "Deutsch"; strings = { ... }; }).
@@ -96,11 +98,13 @@ clangStdenv.mkDerivation {
           curl
           dosfstools
           e2fsprogs
+          f2fs-tools
           gptfdisk
           kmod
           mkpasswd
           runix-install
           util-linux
+          xfsprogs
           zfs
         ]
       } \

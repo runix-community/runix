@@ -66,6 +66,13 @@ Commands format_commands(const DiskLayout& layout, config::Filesystem root_fs, c
         case config::Filesystem::Btrfs:
             commands.push_back({"mkfs.btrfs", "-q", "-f", "-L", "runix-root", root});
             break;
+        case config::Filesystem::Xfs:
+            commands.push_back({"mkfs.xfs", "-q", "-f", "-L", "runix-root", root});
+            break;
+        case config::Filesystem::F2fs:
+            commands.push_back({"mkfs.f2fs", "-q", "-f", "-l", "runix-root", "-O",
+                                "extra_attr,inode_checksum,sb_checksum", root});
+            break;
         case config::Filesystem::Zfs:
             // A pool records the host ID that last imported it, and refuses
             // to import elsewhere unless it was exported. Creating it under

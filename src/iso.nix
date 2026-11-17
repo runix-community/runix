@@ -384,6 +384,19 @@ in
     runix.nixPath = lib.mkDefault [ ];
 
     runix.systemServices.wifi.enable = true;
+    # A rescue system reads every disk it may meet.
+    runix.supportedFilesystems = [
+      "ext4"
+      "btrfs"
+      "xfs"
+      "f2fs"
+      "vfat"
+      "exfat"
+      "ntfs3"
+      "ntfs-3g"
+      "nfs4"
+      "cifs"
+    ];
     runix.packages = [
       installer
       pkgs.curl

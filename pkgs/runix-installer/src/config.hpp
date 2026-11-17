@@ -11,8 +11,9 @@
 
 namespace config {
 
-enum class Filesystem { Ext4, Btrfs, Zfs };
-inline constexpr std::array<Filesystem, 3> filesystems{Filesystem::Ext4, Filesystem::Btrfs, Filesystem::Zfs};
+enum class Filesystem { Ext4, Btrfs, Xfs, F2fs, Zfs };
+inline constexpr std::array<Filesystem, 5> filesystems{Filesystem::Ext4, Filesystem::Btrfs, Filesystem::Xfs,
+                                                       Filesystem::F2fs, Filesystem::Zfs};
 const char* name(Filesystem filesystem);
 const char* description(Filesystem filesystem);
 

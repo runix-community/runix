@@ -317,7 +317,7 @@ let
       ${lib.concatMapStringsSep "\n" (
         module: "${pkgs.kmod}/bin/modprobe ${lib.escapeShellArg module}"
       ) cfg.kernel.modules}
-      ${pkgs.util-linux}/bin/mount -a
+      ${pkgs.util-linux}/bin/mount -a -O no_netdev
     fi
     chmod 0000 /etc/runit/stopit /etc/runit/reboot
     chmod 0600 /etc/shadow /etc/gshadow

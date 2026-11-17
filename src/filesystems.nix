@@ -37,8 +37,16 @@ let
       rightLength = builtins.stringLength right.mountPoint;
     in
     leftLength < rightLength || (leftLength == rightLength && left.mountPoint < right.mountPoint);
+  table = import ./filesystems/table.nix pkgs;
+  # Network filesystems wait for the network-filesystems service.
+  withNetdev =
+    value:
+    if table.${value.fsType}.network or false then
+      value // { options = lib.unique (value.options ++ [ "_netdev" ]); }
+    else
+      value;
   fileSystems = lib.mapAttrsToList (
-    mountPoint: value: value // { inherit mountPoint; }
+    mountPoint: value: withNetdev value // { inherit mountPoint; }
   ) config.fileSystems;
   sortedFileSystems = lib.sort byDepth fileSystems;
   fstab = pkgs.writeText "runix-fstab" (

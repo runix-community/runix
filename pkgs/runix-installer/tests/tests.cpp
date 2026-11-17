@@ -959,7 +959,7 @@ TEST(the_filesystem_screen_accepts_zfs_with_cachyos) {
     app.kernel_list.select(5);
     CHECK(config::from_cachyos(app.kernel()));
     app.enter(Screen::Filesystem);
-    app.filesystem_list.select(2);
+    app.filesystem_list.select(config::filesystems.size() - 1);
     CHECK(app.filesystem() == config::Filesystem::Zfs);
     press(app, enter_key());
     CHECK(app.screen == Screen::Account);

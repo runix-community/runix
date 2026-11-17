@@ -12,6 +12,9 @@ let
       fsType = "";
       options = [ ];
     };
+  fileSystemTable = import ./filesystems/table.nix pkgs;
+  # ext2 and ext3 are served by the ext4 module, and so on: the table names
+  # the module, and an unknown type is taken as its own module name.
   earlyFileSystemModules = lib.unique (
     lib.concatMap (
       fileSystem:
@@ -22,7 +25,7 @@ let
           "tmpfs"
           "zfs"
         ])
-      ) fileSystem.fsType
+      ) (fileSystemTable.${fileSystem.fsType}.module or fileSystem.fsType)
     ) cfg.build.earlyFileSystems
   );
   kernel = cfg.kernel.package;
@@ -58,6 +61,7 @@ let
       pkgs.kmod
       pkgs.util-linux.mount
     ]
+    ++ lib.optional (root.fsType == "f2fs") pkgs.f2fs-tools
     ++ lib.optional cfg.zfs.enable cfg.zfs.package;
     pathsToLink = [
       "/bin"
@@ -221,6 +225,12 @@ let
               echo "runix: the root filesystem has errors e2fsck -p cannot fix;" \
                 "booting anyway: run e2fsck -f on it from the ISO" >/dev/console
             fi
+            ;;
+          f2fs)
+            # -a checks only when the filesystem says it needs it.
+            fsck.f2fs -a "$root_device" >/dev/console 2>&1 \
+              || echo "runix: fsck.f2fs could not repair the root filesystem;" \
+                "booting anyway: run fsck.f2fs -f on it from the ISO" >/dev/console
             ;;
         esac
         mount -t "$root_fs_type" -o "$root_options" "$root_device" /sysroot
