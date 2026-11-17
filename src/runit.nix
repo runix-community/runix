@@ -215,6 +215,7 @@ let
   serviceWatch = pkgs.writeShellScript "runix-service-watch" ''
     export PATH=${pkgs.coreutils}/bin
     ${bootMessages}
+    shopt -s nullglob
     declare -A done_ down_count last_pid since
     start=$SECONDS
     while [ $((SECONDS - start)) -lt 60 ]; do
