@@ -83,12 +83,13 @@ let
       until [ -e ${lib.escapeShellArg fileSystem.device} ]; do
         tries=$((tries + 1))
         if [ "$tries" -ge ${toString (cfg.initrd.rootTimeout * 10)} ]; then
-          echo "runix: early filesystem device did not appear: ${fileSystem.device}" >/dev/console
+          fail "early filesystem device did not appear: ${fileSystem.device}"
           exit 1
         fi
         sleep 0.1
       done
     ''}
+    step ${lib.escapeShellArg "mounting ${fileSystem.mountPoint} from ${fileSystem.device} (${fileSystem.fsType})"}
     mkdir -p ${lib.escapeShellArg "/sysroot${fileSystem.mountPoint}"}
     mount \
       -t ${lib.escapeShellArg fileSystem.fsType} \
@@ -104,13 +105,13 @@ let
         until [ -e "$root_device" ]; do
           tries=$((tries + 1))
           if [ "$tries" -ge ${toString (cfg.initrd.rootTimeout * 10)} ]; then
-            echo "runix: VM root device did not appear: $root_device" >/dev/console
+            fail "VM root device did not appear: $root_device"
             exit 1
           fi
           sleep 0.1
         done
         if [ "$format_root" = 1 ]; then
-          echo "runix: formatting persistent VM root" >/dev/console
+          step "formatting the persistent VM root"
           mkfs.ext4 -q -F -L runix-root "$root_device"
         fi
         mount -t "$root_fs_type" -o "$root_options" "$root_device" /sysroot
@@ -133,7 +134,7 @@ let
         until [ -e "$live_device" ]; do
           tries=$((tries + 1))
           if [ "$tries" -ge ${toString (cfg.initrd.rootTimeout * 10)} ]; then
-            echo "runix: live medium did not appear: $live_device" >/dev/console
+            fail "live medium did not appear: $live_device"
             exit 1
           fi
           sleep 0.1
@@ -146,7 +147,7 @@ let
         if grep -qw runix.toram /proc/cmdline; then
           # Copy the store into RAM and let go of the medium, so it can be
           # removed once the system is up.
-          echo "runix: copying the live system to RAM" >/dev/console
+          step "copying the live system to RAM"
           mkdir -p /run/runix-live/ram
           mount -t tmpfs -o size=100%,mode=0755 tmpfs /run/runix-live/ram
           cp "$store_image" /run/runix-live/ram/nix-store.squashfs
@@ -167,6 +168,7 @@ let
       ''
         zgenhostid -f ${lib.escapeShellArg cfg.zfs.hostId}
         modprobe zfs
+        step "importing the ZFS pool ${pool}"
         force=${lib.optionalString cfg.zfs.forceImportRoot "-f"}
         for option in $(cat /proc/cmdline); do
           [ "$option" != zfs_force=1 ] || force=-f
@@ -179,13 +181,13 @@ let
           cat /run/zpool-import.err >/dev/console
           # A pool last used under another host ID never imports by waiting.
           if grep -q "in use from another system" /run/zpool-import.err; then
-            echo "runix: ${pool} was last used by another system (a different host ID)." >/dev/console
-            echo "runix: boot once with zfs_force=1 on the kernel command line to import it anyway." >/dev/console
+            fail "${pool} was last used by another system (a different host ID)"
+            fail "boot once with zfs_force=1 on the kernel command line to import it anyway"
             exit 1
           fi
           tries=$((tries + 1))
           if [ "$tries" -ge ${toString cfg.initrd.rootTimeout} ]; then
-            echo "runix: failed to import ZFS root pool ${pool}" >/dev/console
+            fail "failed to import ZFS root pool ${pool}"
             exit 1
           fi
           sleep 1
@@ -205,7 +207,7 @@ let
         until [ -e "$root_device" ]; do
           tries=$((tries + 1))
           if [ "$tries" -ge ${toString (cfg.initrd.rootTimeout * 10)} ]; then
-            echo "runix: root device did not appear: $root_device" >/dev/console
+            fail "root device did not appear: $root_device"
             exit 1
           fi
           sleep 0.1
@@ -214,23 +216,25 @@ let
         # mounting. e2fsck -p answers nothing interactively.
         case "$root_fs_type" in
           ext2 | ext3 | ext4)
+            step "checking $root_device (e2fsck)"
             fsck_status=0
             e2fsck -p "$root_device" >/dev/console 2>&1 || fsck_status=$?
             if [ $((fsck_status & 2)) -ne 0 ]; then
-              echo "runix: the root filesystem was repaired; rebooting" >/dev/console
+              warn "the root filesystem was repaired; rebooting"
               sync
               reboot -f
             fi
             if [ $((fsck_status & 4)) -ne 0 ]; then
-              echo "runix: the root filesystem has errors e2fsck -p cannot fix;" \
-                "booting anyway: run e2fsck -f on it from the ISO" >/dev/console
+              fail "the root filesystem has errors e2fsck -p cannot fix;" \
+                "booting anyway: run e2fsck -f on it from the ISO"
             fi
             ;;
           f2fs)
+            step "checking $root_device (fsck.f2fs)"
             # -a checks only when the filesystem says it needs it.
             fsck.f2fs -a "$root_device" >/dev/console 2>&1 \
-              || echo "runix: fsck.f2fs could not repair the root filesystem;" \
-                "booting anyway: run fsck.f2fs -f on it from the ISO" >/dev/console
+              || fail "fsck.f2fs could not repair the root filesystem;" \
+                "booting anyway: run fsck.f2fs -f on it from the ISO"
             ;;
         esac
         mount -t "$root_fs_type" -o "$root_options" "$root_device" /sysroot
@@ -250,6 +254,33 @@ let
     ln -sfn /proc/self/fd/1 /dev/stdout
     ln -sfn /proc/self/fd/2 /dev/stderr
     mount -t tmpfs -o mode=0755 tmpfs /run
+    # Boot messages: a green step, a yellow warning, a red failure, each with
+    # the seconds since boot. "quiet" hides the steps, never the problems.
+    quiet=0
+    for option in $(cat /proc/cmdline); do
+      [ "$option" != quiet ] || quiet=1
+    done
+    current_step="starting the initrd"
+    # Never fails: a message must not be what stops the boot.
+    say() {
+      uptime=$(cut -d' ' -f1 /proc/uptime 2>/dev/null) || uptime=
+      printf '\033[2m[%7s]\033[0m %b %s\n' "$uptime" "$1" "$2" >/dev/console 2>/dev/null || true
+    }
+    step() {
+      current_step="$*"
+      [ "$quiet" = 1 ] || say '\033[1;32m::\033[0m' "$*"
+    }
+    warn() { say '\033[1;33m!!\033[0m' "$*"; }
+    fail() { say '\033[1;31m!!\033[0m' "$*"; }
+    # Anything that ends the initrd early panics the kernel; first say what
+    # was going on, and keep it on screen long enough to read.
+    on_exit() {
+      status=$?
+      [ "$status" -ne 0 ] || return 0
+      fail "boot stopped while $current_step (exit status $status)"
+      sleep 15
+    }
+    trap on_exit EXIT
     format_root=0
     root_device=${lib.escapeShellArg root.device}
     root_fs_type=${lib.escapeShellArg root.fsType}
@@ -269,14 +300,14 @@ let
       PARTLABEL=*) root_device="/dev/disk/by-partlabel/''${root_device#PARTLABEL=}" ;;
     esac
     [ -n "$root_device" ] || {
-      echo "runix: no root filesystem in /etc/fstab or fileSystems.\"/\"" >/dev/console
+      fail "no root filesystem in /etc/fstab or fileSystems.\"/\""
       exit 1
     }
     [ -n "$root_fs_type" ] || root_fs_type=auto
     [ -n "$root_options" ] || root_options=defaults
-    echo "runix: loading initrd modules" >/dev/console
+    step "loading kernel modules: ${toString cfg.initrd.loadModules}"
     ${loadModules}
-    echo "runix: starting initrd device manager" >/dev/console
+    step "starting the device manager (mdevd)"
     /bin/mdevd -D 3 -f /etc/mdev.conf -F /lib/firmware -O 2 3>/run/mdevd-initrd-ready &
     mdevd_pid="$!"
     tries=0
@@ -286,9 +317,9 @@ let
       [ "$tries" -lt 300 ] || exit 1
       sleep 0.1
     done
-    echo "runix: coldplugging devices" >/dev/console
+    step "finding devices"
     /bin/timeout ${toString cfg.initrd.rootTimeout} /bin/mdevd-coldplug -O 2
-    echo "runix: mounting root filesystems" >/dev/console
+    step "mounting / from $root_device ($root_fs_type)"
     ${mountRoot}
 
     # runit powers off without stage 1, and only activation creates /etc on an
@@ -304,6 +335,7 @@ let
         init=*) stage2_init="''${option#init=}" ;;
       esac
     done
+    step "switching to the installed system"
     mkdir -p /sysroot/dev /sysroot/proc /sysroot/run /sysroot/sys
     mount --bind /dev /sysroot/dev
     mount --bind /proc /sysroot/proc
@@ -320,7 +352,6 @@ let
     mount -t devpts -o gid=5,mode=0620,ptmxmode=0666 devpts /sysroot/dev/pts
     ln -sf pts/ptmx /sysroot/dev/ptmx
     mount -t tmpfs -o mode=1777,nosuid,nodev tmpfs /sysroot/dev/shm
-    echo "runix: switching to stage 2" >/dev/console
     exec switch_root /sysroot "$stage2_init"
   '';
 

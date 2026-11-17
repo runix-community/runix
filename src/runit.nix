@@ -194,13 +194,88 @@ let
     ) services
   );
 
+  # The same colored boot messages as the initrd: a green step, a yellow
+  # warning, a red failure, with the seconds since boot.
+  bootMessages = ''
+    quiet=0
+    case " $(${pkgs.coreutils}/bin/cat /proc/cmdline) " in *" quiet "*) quiet=1 ;; esac
+    say() {
+      local uptime=
+      read -r uptime _ </proc/uptime 2>/dev/null || true
+      printf '\033[2m[%7s]\033[0m %b %s\n' "$uptime" "$1" "$2" >/dev/console 2>/dev/null || true
+    }
+    step() { [ "$quiet" = 1 ] || say '\033[1;32m::\033[0m' "$*"; return 0; }
+    warn() { say '\033[1;33m!!\033[0m' "$*"; }
+    fail() { say '\033[1;31m!!\033[0m' "$*"; }
+  '';
+
+  # Prints each service as it comes up, during boot only: OK once it has run
+  # for a moment past its dependency wait, FAILED when it stays down though
+  # runit wants it up, with its last log line. Gives up after a minute.
+  serviceWatch = pkgs.writeShellScript "runix-service-watch" ''
+    export PATH=${pkgs.coreutils}/bin
+    ${bootMessages}
+    declare -A done_ down_count last_pid since
+    start=$SECONDS
+    while [ $((SECONDS - start)) -lt 60 ]; do
+      pending=0
+      for dir in /run/runit/service/*; do
+        name=''${dir##*/}
+        [ -z "''${done_[$name]-}" ] || continue
+        pending=1
+        status=$(${cfg.runit.package}/bin/sv status "$dir" 2>/dev/null) || continue
+        case "$status" in
+          down:*"want up"*)
+            down_count[$name]=$((''${down_count[$name]-0} + 1))
+            # Down for a second or more while runit keeps restarting it.
+            [ "''${down_count[$name]}" -ge 5 ] || continue
+            done_[$name]=1
+            log=/var/log/runit/$name/current
+            last=
+            [ ! -r "$log" ] || last=$(tail -n 1 "$log" | cut -d' ' -f2-)
+            say '\033[1;31m[FAILED]\033[0m' "$name keeps failing''${last:+: $last}"
+            [ ! -r "$log" ] || say '        ' "see $log"
+            ;;
+          down:*)
+            # A one-shot service that finished and asked not to restart.
+            done_[$name]=1
+            [ "$quiet" = 1 ] || say '\033[1;32m[  OK  ]\033[0m' "Finished $name"
+            ;;
+          run:*)
+            pid=$(cat "$dir/supervise/pid" 2>/dev/null) || continue
+            [ -n "$pid" ] || continue
+            if [ "$pid" != "''${last_pid[$name]-}" ]; then
+              last_pid[$name]=$pid
+              since[$name]=$SECONDS
+            fi
+            # Still in its run script, waiting for the services it comes after.
+            [ "$(cat "/proc/$pid/comm" 2>/dev/null)" != run ] || continue
+            [ $((SECONDS - ''${since[$name]})) -ge 1 ] || continue
+            done_[$name]=1
+            [ "$quiet" = 1 ] || say '\033[1;32m[  OK  ]\033[0m' "Started $name"
+            ;;
+        esac
+      done
+      [ "$pending" = 1 ] || exit 0
+      sleep 0.25
+    done
+    for dir in /run/runit/service/*; do
+      name=''${dir##*/}
+      [ -n "''${done_[$name]-}" ] || say '\033[1;33m[ WAIT ]\033[0m' "$name has not started after a minute"
+    done
+  '';
+
   stage1 = pkgs.writeShellScript "runix-stage-1" ''
     set -eu
     init="$(${pkgs.coreutils}/bin/tr '\0' '\n' </proc/1/cmdline | ${pkgs.gnused}/bin/sed -n '1p')"
     system="''${init%/*}"
-    echo "runix: activating stage 2" >/dev/console
-    "$system/activate" --boot
-    echo "runix: stage 2 activated" >/dev/console
+    ${bootMessages}
+    step "activating the system: /etc, users, filesystems, kernel modules"
+    if ! "$system/activate" --boot; then
+      fail "activation failed; the system may be incomplete"
+      exit 1
+    fi
+    step "starting services"
   '';
 
   stage2 = pkgs.writeShellScript "runix-stage-2" ''
@@ -209,6 +284,7 @@ let
     ${pkgs.coreutils}/bin/mkdir -p /var/log/runit
     ${cfg.runit.package}/bin/runsvdir /run/runit/service >>/var/log/runit/runsvdir.log 2>&1 &
     supervisor="$!"
+    ${serviceWatch} &
     trap 'kill -TERM "$supervisor" 2>/dev/null || true; wait "$supervisor" 2>/dev/null || true; exit 0' TERM
     while [ ! -e /run/runit/stop ]; do
       ${pkgs.coreutils}/bin/sleep 0.1
@@ -218,22 +294,28 @@ let
   '';
 
   stage3 = pkgs.writeShellScript "runix-stage-3" ''
+    ${bootMessages}
+    step "stopping services"
     for service in /run/runit/service/*; do
       [ -d "$service" ] || continue
-      ${cfg.runit.package}/bin/sv -w ${toString cfg.runit.serviceTimeout} force-stop "$service" || true
-      ${cfg.runit.package}/bin/sv exit "$service" || true
+      ${cfg.runit.package}/bin/sv -w ${toString cfg.runit.serviceTimeout} force-stop "$service" >/dev/null 2>&1 \
+        || warn "''${service##*/} did not stop in ${toString cfg.runit.serviceTimeout}s; killed"
+      ${cfg.runit.package}/bin/sv exit "$service" >/dev/null 2>&1 || true
     done
     ${lib.concatStringsSep "\n" cfg.shutdownScripts}
     # Nothing may still be writing when the power goes: end every process
     # left (sessions, programs), then unmount, or at least make read-only,
     # every filesystem. runit powers off once this returns.
+    step "ending remaining processes"
     ${pkgs.util-linux}/bin/kill -TERM -1 2>/dev/null || true
     ${pkgs.coreutils}/bin/sleep 2
     ${pkgs.util-linux}/bin/kill -KILL -1 2>/dev/null || true
     ${pkgs.coreutils}/bin/sync
+    step "unmounting filesystems"
     ${pkgs.util-linux}/bin/swapoff -a 2>/dev/null || true
     ${pkgs.util-linux}/bin/umount -a -r -t noproc,sysfs,devtmpfs,devpts,tmpfs,cgroup2 2>/dev/null || true
-    ${pkgs.util-linux}/bin/mount -o remount,ro / 2>/dev/null || true
+    ${pkgs.util-linux}/bin/mount -o remount,ro / 2>/dev/null \
+      || warn "/ could not be made read-only; it will be checked at the next boot"
     ${pkgs.coreutils}/bin/sync
   '';
 
