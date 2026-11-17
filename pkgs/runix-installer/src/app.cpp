@@ -53,6 +53,7 @@ const char* title(Screen screen) {
         case Screen::Account: return N_("Account");
         case Screen::Timezone: return N_("Time zone");
         case Screen::Desktop: return N_("Desktop");
+        case Screen::Server: return N_("Server");
         case Screen::Connection: return N_("Connection");
         case Screen::Review: return N_("Review");
         case Screen::Installing: return N_("Install");
@@ -221,7 +222,7 @@ std::vector<std::pair<std::string, std::string>> App::summary() const {
     if (const auto* chosen = disk()) {
         disk_text = chosen->path + "  " + util::format_size(chosen->size) + "  " + chosen->model;
     }
-    return {
+    std::vector<std::pair<std::string, std::string>> rows{
         {N_("Disk"), disk_text},
         {N_("Layout"), layout_summary()},
         {N_("Boot loader"), tr(config::name(loader()))},
@@ -235,8 +236,16 @@ std::vector<std::pair<std::string, std::string>> App::summary() const {
         {N_("User"), user.value},
         {N_("Time zone"), timezone()},
         {N_("Desktop"), tr(config::name(desktop()))},
-        {N_("Connection"), tr(config::name(connection()))},
     };
+    if (desktop() == config::Desktop::Server) {
+        auto or_none = [](const std::string& value, const char* none) { return value.empty() ? tr(none) : value; };
+        rows.push_back({N_("Domain"), or_none(domain.value, N_("none, local network only"))});
+        rows.push_back({N_("Tunnel"), or_none(tunnel_id.value, N_("none, set up later"))});
+        rows.push_back({N_("SSH"), ssh_key.value.empty() ? tr("password logins")
+                                                         : tr("key only: ") + ssh_key.value.substr(0, ssh_key.value.find(' '))});
+    }
+    rows.push_back({N_("Connection"), tr(config::name(connection()))});
+    return rows;
 }
 
 void App::check_online() {
@@ -294,6 +303,7 @@ void App::enter(Screen next) {
 
 bool App::applicable(Screen candidate) const {
     if (candidate == Screen::Connection) return wireless;
+    if (candidate == Screen::Server) return desktop() == config::Desktop::Server;
     if (candidate == Screen::Partitions) return manual();
     return true;
 }
@@ -516,6 +526,11 @@ void App::start_install() {
     plan.battery = devices.battery;
     if (!options.demo) plan.disk_modules = system_probe::disk_modules("/sys", plan.disk);
     plan.extra_configuration = options.defaults.extra_configuration;
+    if (plan.desktop == config::Desktop::Server) {
+        plan.domain = domain.value;
+        plan.tunnel_id = tunnel_id.value;
+        plan.ssh_key = ssh_key.value;
+    }
     log.clear();
     scroll = 0;
     phase = 0;
@@ -631,6 +646,7 @@ std::vector<std::pair<std::string, std::string>> App::hints() const {
             }
             return {{"enter", N_("continue")}, {"s", N_("skip")}, {"esc", N_("back")}};
         case Screen::Account: return {{"tab", N_("next")}, {"enter", N_("continue")}, {"esc", N_("back")}};
+        case Screen::Server: return {{"tab", N_("next")}, {"enter", N_("continue")}, {"esc", N_("back")}};
         case Screen::Timezone: return {{"type", N_("search")}, {"enter", N_("continue")}, {"esc", N_("back")}};
         case Screen::Partitions:
             return {{"b", N_("boot")}, {"r", N_("root")}, {"f", N_("format boot")}, {"e", N_("cfdisk")}, {"enter", N_("continue")}, {"esc", N_("back")}};
@@ -708,6 +724,9 @@ void App::on_key(const Key& key) {
             break;
         case Screen::Desktop:
             on_wizard_list_key(key, desktop_list, config::desktops.size());
+            break;
+        case Screen::Server:
+            on_server_key(key);
             break;
         case Screen::Connection:
             on_wizard_list_key(key, connection_list, config::networks.size());
@@ -982,6 +1001,42 @@ void App::on_account_key(const Key& key) {
     }
     Input* field = focus == 0 ? &host : focus == 1 ? &user : focus == 2 ? &password : &confirm;
     if (field->handle(key)) form_error.reset();
+}
+
+void App::on_server_key(const Key& key) {
+    constexpr std::size_t last_field = 2;
+    switch (key.code) {
+        case Key::Code::Esc: back(); return;
+        case Key::Code::Tab:
+        case Key::Code::Down: server_focus = std::min(server_focus + 1, last_field); return;
+        case Key::Code::BackTab:
+        case Key::Code::Up: server_focus = server_focus == 0 ? 0 : server_focus - 1; return;
+        case Key::Code::Enter:
+            if (server_focus < last_field) {
+                ++server_focus;
+            } else {
+                submit_server();
+            }
+            return;
+        default: break;
+    }
+    Input* field = server_focus == 0 ? &domain : server_focus == 1 ? &tunnel_id : &ssh_key;
+    if (field->handle(key)) server_error.reset();
+}
+
+void App::submit_server() {
+    server_error.reset();
+    if (!domain.value.empty() && !config::valid_domain(domain.value)) {
+        server_error = tr("The domain is a name like example.org: letters, digits, hyphens and dots.");
+        server_focus = 0;
+    } else if (!tunnel_id.value.empty() && !config::valid_tunnel_id(tunnel_id.value)) {
+        server_error = tr("The tunnel ID looks like 6ff42ae2-765d-4adf-8112-31c55c1551ef.");
+        server_focus = 1;
+    } else if (!ssh_key.value.empty() && !config::valid_ssh_key(ssh_key.value)) {
+        server_error = tr("Paste one public key line, like ssh-ed25519 AAAA... you@host.");
+        server_focus = 2;
+    }
+    if (!server_error) advance();
 }
 
 void App::on_timezone_key(const Key& key) {

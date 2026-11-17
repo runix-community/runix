@@ -35,6 +35,7 @@ enum class Screen {
     Account,
     Timezone,
     Desktop,
+    Server,
     Connection,
     Review,
     Installing,
@@ -42,10 +43,10 @@ enum class Screen {
     Done,
 };
 
-inline constexpr std::array<Screen, 13> wizard{
+inline constexpr std::array<Screen, 14> wizard{
     Screen::Welcome,  Screen::Network,      Screen::Disk,       Screen::Bootloader, Screen::Kernel,
     Screen::Partitioning, Screen::Partitions, Screen::Filesystem, Screen::Account,
-    Screen::Timezone, Screen::Desktop,      Screen::Connection, Screen::Review,
+    Screen::Timezone, Screen::Desktop,      Screen::Server,     Screen::Connection, Screen::Review,
 };
 
 const char* title(Screen screen);
@@ -214,6 +215,12 @@ public:
     ListState zone_list;
 
     ListState desktop_list;
+    /// The Server screen, shown only for the Server choice; all optional.
+    Input domain;
+    Input tunnel_id;
+    Input ssh_key;
+    std::size_t server_focus = 0;
+    std::optional<std::string> server_error;
     ListState connection_list;
     Input confirmation;
     config::BootMode boot_mode = config::BootMode::Efi;
@@ -326,5 +333,7 @@ private:
     void on_network_key(const Key& key);
     void on_partitions_key(const Key& key);
     void on_account_key(const Key& key);
+    void on_server_key(const Key& key);
+    void submit_server();
     void on_timezone_key(const Key& key);
 };

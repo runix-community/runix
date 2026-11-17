@@ -152,6 +152,44 @@ TEST(configuration_uses_runix_networking) {
     CHECK(has(text, "${pkgs.busybox}/bin/getty"));
 }
 
+TEST(server_without_settings_comments_the_tunnel) {
+    auto value = settings();
+    value.desktop = config::Desktop::Server;
+    auto text = config::configuration(value);
+    CHECK(has(text, "sites.\":80\".root = \"/srv/www\";"));
+    CHECK(has(text, "  # runix.systemServices.cloudflared = {"));
+    CHECK(!has(text, "passwordAuthentication = false;"));
+    CHECK(!has(text, "runix.desktop.enable"));
+}
+
+TEST(server_settings_reach_the_configuration) {
+    auto value = settings();
+    value.desktop = config::Desktop::Server;
+    value.domain = "blx.dev";
+    value.tunnel_id = "6ff42ae2-765d-4adf-8112-31c55c1551ef";
+    value.ssh_key = "ssh-ed25519 AAAAC3Nza alice@laptop";
+    auto text = config::configuration(value);
+    CHECK(has(text, "sites.\"blx.dev\".root = \"/srv/www/blx.dev\";"));
+    CHECK(has(text, "tunnelId = \"6ff42ae2-765d-4adf-8112-31c55c1551ef\";"));
+    CHECK(has(text, "authorizedKeys.alice = [ \"ssh-ed25519 AAAAC3Nza alice@laptop\" ];"));
+    CHECK(has(text, "passwordAuthentication = false;"));
+}
+
+TEST(server_settings_are_checked) {
+    CHECK(config::valid_domain("blx.dev"));
+    CHECK(config::valid_domain("www.my-site.example.org"));
+    CHECK(!config::valid_domain("localhost"));
+    CHECK(!config::valid_domain("bad..dev"));
+    CHECK(!config::valid_domain("-a.dev"));
+    CHECK(!config::valid_domain("a.dev\";"));
+    CHECK(config::valid_tunnel_id("6ff42ae2-765d-4adf-8112-31c55c1551ef"));
+    CHECK(!config::valid_tunnel_id("6ff42ae2765d4adf811231c55c1551ef"));
+    CHECK(config::valid_ssh_key("ssh-ed25519 AAAAC3Nza alice@laptop"));
+    CHECK(!config::valid_ssh_key("hello"));
+    CHECK(!config::valid_ssh_key("ssh-ed25519 AAAA\" ${evil}"));
+    CHECK(!config::valid_ssh_key("ssh-ed25519 AAAA ${x}"));
+}
+
 TEST(other_compositors_replace_hyprland) {
     auto value = settings();
     value.desktop = config::Desktop::Niri;
@@ -1087,6 +1125,22 @@ TEST(extra_configuration_lands_in_configuration_nix) {
 }
 
 }  // namespace
+
+TEST(the_server_screen_only_follows_the_server_choice) {
+    App app = demo_app();
+    app.desktop_list.select(0);
+    CHECK(!app.applicable(Screen::Server));
+    app.desktop_list.select(1);
+    CHECK(app.desktop() == config::Desktop::Server);
+    CHECK(app.applicable(Screen::Server));
+    app.enter(Screen::Server);
+    for (char c : std::string("not a domain")) press(app, Key::character(std::string(1, c)));
+    press(app, enter_key());
+    press(app, enter_key());
+    press(app, enter_key());
+    CHECK(app.screen == Screen::Server);
+    CHECK(app.server_error.has_value());
+}
 
 int main() {
     for (const auto& [name, test] : registry()) {

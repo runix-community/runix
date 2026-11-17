@@ -105,6 +105,10 @@ struct Settings {
     std::string zfs_host_id;
     /// Nix from the installer's settings, added to configuration.nix as is.
     std::string extra_configuration;
+    /// The Server choice's optional settings; empty leaves each one out.
+    std::string domain;
+    std::string tunnel_id;
+    std::string ssh_key;
 };
 
 /// Stable names for the choices, used by the installer's settings file
@@ -120,6 +124,12 @@ std::string check_kernel(Kernel kernel, Filesystem filesystem);
 
 bool valid_host(const std::string& value);
 bool valid_user(const std::string& value);
+/// A host name with at least one dot, like example.org.
+bool valid_domain(const std::string& value);
+/// A Cloudflare Tunnel ID: a UUID.
+bool valid_tunnel_id(const std::string& value);
+/// One OpenSSH public key line, safe inside a Nix string.
+bool valid_ssh_key(const std::string& value);
 std::string password_hash_path(const std::string& user);
 
 std::string flake(const Settings& settings);

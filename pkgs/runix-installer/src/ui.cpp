@@ -224,6 +224,7 @@ std::string subtitle(const App& app) {
         case Screen::Account: return N_("Name this computer and create your administrator account.");
         case Screen::Timezone: return N_("Type to search, then pick yours.");
         case Screen::Desktop: return N_("Desktops take longer to install.");
+        case Screen::Server: return N_("All optional; each one can be added to configuration.nix later.");
         case Screen::Connection: return N_("Wi-Fi keeps the network you joined here.");
         case Screen::Review: return N_("Last chance to go back. Nothing has changed yet.");
         case Screen::Installing: return N_("This takes a while. Keep the computer powered on.");
@@ -680,6 +681,27 @@ void draw_account(App& app, Rect area) {
     draw_lines(area, lines);
 }
 
+void draw_server(App& app, Rect area) {
+    auto note = [](const std::string& text) { return Line{span("    " + text, Color::Muted)}; };
+    // A pasted key is longer than the screen: show its end, where typing is.
+    Input key = app.ssh_key;
+    std::size_t room = area.w > 30 ? static_cast<std::size_t>(area.w - 24) : 6;
+    if (key.value.size() > room) key.value = "…" + key.value.substr(key.value.size() - room + 1);
+    std::vector<Line> lines{
+        field(tr("Domain"), app.domain, app.server_focus == 0),
+        note(tr("served from /srv/www/DOMAIN; empty serves only your local network")), {},
+        field(tr("Tunnel ID"), app.tunnel_id, app.server_focus == 1),
+        note(tr("from cloudflared tunnel create; turns the Cloudflare Tunnel on")), {},
+        field(tr("SSH public key"), key, app.server_focus == 2),
+        note(tr("logins with this key only; empty keeps password logins")), {},
+    };
+    if (app.server_error) {
+        auto error = wrapped(*app.server_error, fg(Color::Error), area.w);
+        lines.insert(lines.end(), error.begin(), error.end());
+    }
+    draw_lines(area, lines);
+}
+
 void draw_timezone(App& app, Rect area) {
     Rect search = take_rows(area, 1);
     take_rows(area, 1);
@@ -1039,6 +1061,7 @@ void draw(App& app) {
             case Screen::Account: draw_account(app, content); break;
             case Screen::Timezone: draw_timezone(app, content); break;
             case Screen::Desktop: draw_desktop(app, content); break;
+            case Screen::Server: draw_server(app, content); break;
             case Screen::Connection: draw_connection(app, content); break;
             case Screen::Review: draw_review(app, content); break;
             case Screen::Installing: draw_installing(app, content); break;

@@ -85,6 +85,9 @@ struct Plan {
     std::vector<std::string> disk_modules;
     /// Nix added to configuration.nix as is.
     std::string extra_configuration;
+    std::string domain;
+    std::string tunnel_id;
+    std::string ssh_key;
 };
 
 /// What Nix reports while the system is installed.

@@ -255,6 +255,47 @@ bool valid_user(const std::string& value) {
     return true;
 }
 
+bool valid_domain(const std::string& value) {
+    if (value.size() > 253 || value.find('.') == std::string::npos) return false;
+    std::size_t start = 0;
+    while (start <= value.size()) {
+        std::size_t end = value.find('.', start);
+        if (end == std::string::npos) end = value.size();
+        std::string label = value.substr(start, end - start);
+        if (label.empty() || label.size() > 63 || label.front() == '-' || label.back() == '-') return false;
+        for (char c : label) {
+            bool ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-';
+            if (!ok) return false;
+        }
+        start = end + 1;
+    }
+    return true;
+}
+
+bool valid_tunnel_id(const std::string& value) {
+    if (value.size() != 36) return false;
+    for (std::size_t index = 0; index < value.size(); ++index) {
+        char c = value[index];
+        if (index == 8 || index == 13 || index == 18 || index == 23) {
+            if (c != '-') return false;
+        } else if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool valid_ssh_key(const std::string& value) {
+    static constexpr std::array<const char*, 4> types{"ssh-ed25519 ", "ssh-rsa ", "ecdsa-sha2-", "sk-"};
+    bool known = std::any_of(types.begin(), types.end(), [&](const char* type) { return value.rfind(type, 0) == 0; });
+    if (!known || value.size() > 16384) return false;
+    // Goes into a Nix string: no quotes, backslashes or interpolation.
+    for (char c : value) {
+        if (c == '"' || c == '\\' || static_cast<unsigned char>(c) < 32) return false;
+    }
+    return value.find("${") == std::string::npos;
+}
+
 std::string password_hash_path(const std::string& user) {
     return "/var/lib/runix/secrets/" + user + ".hash";
 }
@@ -434,26 +475,48 @@ std::string configuration(const Settings& settings) {
                                : "  runix.systemServices.dhcpcd.enable = true;\n";
     std::string desktop;
     if (settings.desktop == Desktop::Server) {
+        bool key = !settings.ssh_key.empty();
         desktop = "  # A server: log in over SSH, serve websites with Caddy.\n"
-                  "  runix.systemServices.openssh.enable = true;\n"
-                  "  runix.systemServices.caddy = {\n"
-                  "    enable = true;\n"
-                  "    # Any request on port 80, for your local network. Put the files in\n"
-                  "    # /srv/www (sudo chown -R " + settings.user + " /srv/www to edit them yourself).\n"
-                  "    sites.\":80\".root = \"/srv/www\";\n"
-                  "    # Your domain, through the tunnel below:\n"
-                  "    # sites.\"example.org\".root = \"/srv/www/example.org\";\n"
-                  "  };\n"
-                  "  # Put the sites on your domain without opening ports; Cloudflare serves\n"
-                  "  # HTTPS. As root: cloudflared tunnel login, then cloudflared tunnel create\n"
-                  "  # NAME prints the ID below and writes /root/.cloudflared/ID.json: move that\n"
-                  "  # to /var/lib/cloudflared/tunnel.json. cloudflared tunnel route dns NAME\n"
-                  "  # example.org points the domain at it.\n"
-                  "  runix.packages = [ pkgs.cloudflared ];\n"
-                  "  # runix.systemServices.cloudflared = {\n"
-                  "  #   enable = true;\n"
-                  "  #   tunnelId = \"00000000-0000-0000-0000-000000000000\";\n"
-                  "  # };\n";
+                  "  runix.systemServices.openssh = {\n"
+                  "    enable = true;\n";
+        if (key) {
+            desktop += "    # Only this key logs in; passwords are refused.\n"
+                       "    passwordAuthentication = false;\n"
+                       "    authorizedKeys." + settings.user + " = [ \"" + settings.ssh_key + "\" ];\n";
+        }
+        desktop += "  };\n"
+                   "  runix.systemServices.caddy = {\n"
+                   "    enable = true;\n"
+                   "    # Any request on port 80, for your local network. Put the files in\n"
+                   "    # /srv/www (sudo chown -R " + settings.user + " /srv/www to edit them yourself).\n"
+                   "    sites.\":80\".root = \"/srv/www\";\n";
+        if (!settings.domain.empty()) {
+            desktop += "    sites.\"" + settings.domain + "\".root = \"/srv/www/" + settings.domain + "\";\n";
+        } else {
+            desktop += "    # Your domain, through a Cloudflare Tunnel:\n"
+                       "    # sites.\"example.org\".root = \"/srv/www/example.org\";\n";
+        }
+        desktop += "  };\n"
+                   "  # cloudflared puts the sites on your domain without opening ports;\n"
+                   "  # Cloudflare serves HTTPS.\n"
+                   "  runix.packages = [ pkgs.cloudflared ];\n";
+        if (!settings.tunnel_id.empty()) {
+            desktop += "  # Copy the tunnel's credentials (the ID.json from cloudflared tunnel\n"
+                       "  # create) to /var/lib/cloudflared/tunnel.json; it waits until they are there.\n"
+                       "  runix.systemServices.cloudflared = {\n"
+                       "    enable = true;\n"
+                       "    tunnelId = \"" + settings.tunnel_id + "\";\n"
+                       "  };\n";
+        } else {
+            desktop += "  # As root: cloudflared tunnel login, then cloudflared tunnel create NAME\n"
+                       "  # prints the ID below and writes /root/.cloudflared/ID.json: move that to\n"
+                       "  # /var/lib/cloudflared/tunnel.json. cloudflared tunnel route dns NAME\n"
+                       "  # example.org points the domain at it.\n"
+                       "  # runix.systemServices.cloudflared = {\n"
+                       "  #   enable = true;\n"
+                       "  #   tunnelId = \"00000000-0000-0000-0000-000000000000\";\n"
+                       "  # };\n";
+        }
     } else if (settings.desktop != Desktop::None) {
         desktop = "  runix.desktop.enable = true;\n"
                   "  programs.firefox.enable = true;\n";

@@ -17,8 +17,11 @@ let
     HostKey /var/lib/runix/ssh/ssh_host_ed25519_key
     HostKey /var/lib/runix/ssh/ssh_host_rsa_key
     PasswordAuthentication ${if cfg.passwordAuthentication then "yes" else "no"}
+    # Through PAM, keyboard-interactive is a password login too.
+    KbdInteractiveAuthentication ${if cfg.passwordAuthentication then "yes" else "no"}
     PermitRootLogin ${if cfg.permitRootLogin then "yes" else "no"}
     UsePAM yes
+    AuthorizedKeysFile .ssh/authorized_keys /etc/ssh/authorized_keys.d/%u
     PidFile /run/sshd.pid
     Subsystem sftp ${pkgs.openssh}/libexec/sftp-server
   '';
@@ -30,6 +33,14 @@ in
       type = lib.types.bool;
       default = true;
       description = "Whether sshd accepts password authentication.";
+    };
+    authorizedKeys = lib.mkOption {
+      type = lib.types.attrsOf (lib.types.listOf lib.types.str);
+      default = { };
+      example = {
+        alice = [ "ssh-ed25519 AAAAC3... alice@laptop" ];
+      };
+      description = "Public keys, by user name, that may log in as that user, besides ~/.ssh/authorized_keys.";
     };
     permitRootLogin = lib.mkOption {
       type = lib.types.bool;
@@ -49,6 +60,13 @@ in
     runix.preparationScripts = [
       ''
         mkdir -p /etc/pam.d /run/sshd /var/empty /var/lib/runix/ssh
+        # Copies, not links: sshd checks the owner and mode of key files.
+        rm -rf /etc/ssh/authorized_keys.d
+        install -d -m 0755 /etc/ssh/authorized_keys.d
+        ${lib.concatMapAttrsStringSep "\n" (
+          user: keys:
+          "install -m 0444 ${pkgs.writeText "authorized-keys-${user}" (lib.concatLines keys)} /etc/ssh/authorized_keys.d/${lib.escapeShellArg user}"
+        ) cfg.authorizedKeys}
         ln -sfn ${pamConfig} /etc/pam.d/sshd
         if [ ! -s /var/lib/runix/ssh/ssh_host_ed25519_key ]; then
           ${pkgs.openssh}/bin/ssh-keygen -q -t ed25519 -N "" -f /var/lib/runix/ssh/ssh_host_ed25519_key
