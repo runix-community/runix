@@ -451,6 +451,8 @@ let
     # Never change the live kernel or services during offline installation.
     [ "$RUNIX_OFFLINE" = 0 ] || exit 0
     ${pkgs.busybox}/bin/hostname ${lib.escapeShellArg cfg.hostName}
+    # The loopback interface: 127.0.0.1 and ::1, for everything local.
+    ${pkgs.iproute2}/bin/ip link set lo up
     ${lib.concatStringsSep "\n" cfg.activationScripts}
 
     source=${serviceTree}
