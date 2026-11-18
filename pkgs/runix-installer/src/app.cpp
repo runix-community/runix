@@ -528,6 +528,7 @@ void App::start_install() {
     plan.battery = devices.battery;
     if (!options.demo) plan.disk_modules = system_probe::disk_modules("/sys", plan.disk);
     plan.extra_configuration = options.defaults.extra_configuration;
+    plan.mirrors = !mirror.empty();
     if (plan.desktop == config::Desktop::Server) {
         plan.domain = domain.value;
         plan.tunnel_id = tunnel_id.value;

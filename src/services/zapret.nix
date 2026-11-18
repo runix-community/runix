@@ -26,7 +26,16 @@ let
   userList =
     name: hosts:
     pkgs.writeText name (lib.concatLines (if hosts == [ ] then [ "domain.invalid" ] else hosts));
-  general = "--hostlist=${lists}/list-general.txt --hostlist=${userList "zapret-hosts" cfg.hosts}";
+  # GitHub is throttled in Russia too, and Nix fetches flakes from it.
+  github = [
+    "github.com"
+    "githubusercontent.com"
+    "githubassets.com"
+    "github.io"
+  ];
+  general = "--hostlist=${lists}/list-general.txt --hostlist=${
+    userList "zapret-hosts" (cfg.hosts ++ lib.optionals cfg.github github)
+  }";
   exclude = "--hostlist-exclude=${lists}/list-exclude.txt --hostlist-exclude=${userList "zapret-exclude" cfg.excludeHosts} --ipset-exclude=${lists}/ipset-exclude.txt";
 
   ports = lib.concatStringsSep ", ";
@@ -61,6 +70,20 @@ in
       default = [ ];
       example = [ "rutracker.org" ];
       description = "More blocked sites to unblock. Subdomains are included.";
+    };
+    github = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Unblock GitHub too, where Nix fetches flakes such as Runix and nixpkgs.";
+    };
+    whenBlocked = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Turn on only when GitHub is blocked or slow: once the network is up,
+        download a little from GitHub, and stay idle if that works. The live
+        installer uses this, so it changes nothing where nothing is blocked.
+      '';
     };
     excludeHosts = lib.mkOption {
       type = lib.types.listOf lib.types.str;
@@ -115,7 +138,27 @@ in
     runix.packages = [ pkgs.zapret ];
 
     runix.services.zapret = {
+      path = [
+        pkgs.curl
+        pkgs.iproute2
+        pkgs.gawk
+        pkgs.gnugrep
+      ];
       script = ''
+        ${lib.optionalString cfg.whenBlocked ''
+          until ip route show default | grep -q .; do sleep 3; done
+          # Bytes per second from a real GitHub download; throttling lets the
+          # first few kilobytes through and then stalls.
+          speed=$(curl -sL -o /dev/null --connect-timeout 8 --max-time 10 \
+            -w '%{size_download} %{time_total}' \
+            https://codeload.github.com/runix-community/runix/tar.gz/refs/heads/main 2>/dev/null |
+            awk '{ if ($2 > 0) printf "%d", $1 / $2; else print 0 }')
+          if [ "''${speed:-0}" -ge 102400 ]; then
+            echo "zapret: GitHub works ($speed B/s), staying off"
+            exec sleep infinity
+          fi
+          echo "zapret: GitHub is blocked or slow (''${speed:-0} B/s), turning on"
+        ''}
         ${pkgs.kmod}/bin/modprobe -qa nfnetlink_queue nft_queue nf_conntrack || true
         # Without this, conntrack drops the overlapping packets nfqws sends.
         echo 1 > /proc/sys/net/netfilter/nf_conntrack_tcp_be_liberal

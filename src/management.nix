@@ -51,9 +51,11 @@ in
   options.nix.mirrors = {
     enable = lib.mkOption {
       type = lib.types.bool;
-      default = true;
+      default = false;
       description = ''
-        Test cache.nixos.org at boot and every few hours. When it is blocked
+        For networks where cache.nixos.org is censored, as in Russia. The
+        live installer turns this on, and so does the installed system when
+        installing needed a mirror. Tests cache.nixos.org at boot and every few hours. When it is blocked
         or slower than minimumSpeed, Nix uses the fastest working mirror
         instead. Mirrors are contacted only then, and every download is still
         checked against cache.nixos.org's signing key. See `runix-mirrors status`.
@@ -62,11 +64,12 @@ in
     candidates = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [
-        "https://mirror.yandex.ru/nixos"
         "https://nixos-cache-proxy.cofob.dev"
         "https://cache.nixos.kz"
         "https://ncproxy.vizqq.cc"
       ];
+      # mirror.yandex.ru/nixos answers the speed test but times out on real
+      # installs, so it is left out.
       description = "Mirrors of cache.nixos.org to try, in no particular order.";
     };
     minimumSpeed = lib.mkOption {

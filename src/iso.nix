@@ -386,6 +386,13 @@ in
     runix.nixPath = lib.mkDefault [ ];
 
     runix.systemServices.wifi.enable = true;
+    # Uses a mirror only if cache.nixos.org is blocked or slow.
+    nix.mirrors.enable = lib.mkDefault true;
+    # Unblocks GitHub where it is censored, as in Russia; idle elsewhere.
+    runix.systemServices.zapret = {
+      enable = lib.mkDefault true;
+      whenBlocked = lib.mkDefault true;
+    };
     # A rescue system reads every disk it may meet.
     runix.supportedFilesystems = [
       "ext4"

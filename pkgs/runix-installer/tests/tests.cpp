@@ -466,6 +466,14 @@ TEST(partitions_are_read_from_lsblk) {
     CHECK(system_probe::parse_partitions("not json").empty());
 }
 
+TEST(mirrors_stay_off_unless_the_install_needed_them) {
+    config::Settings settings;
+    settings.user = "blx";
+    CHECK(config::nix_settings(settings).find("nix.mirrors.enable") == std::string::npos);
+    settings.mirrors = true;
+    CHECK(config::nix_settings(settings).find("nix.mirrors.enable = true;") != std::string::npos);
+}
+
 TEST(the_chosen_mirror_is_read_from_the_probe) {
     CHECK(system_probe::parse_mirror("cache.nixos.org: unreachable, trying mirrors\n"
                                      "using: https://ncproxy.vizqq.cc?priority=10 https://cache.nixos.kz?priority=11\n") ==

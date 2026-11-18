@@ -318,6 +318,7 @@ void install(const Plan& plan, Runner& runner) {
     settings.domain = plan.domain;
     settings.tunnel_id = plan.tunnel_id;
     settings.ssh_key = plan.ssh_key;
+    settings.mirrors = plan.mirrors;
     if (!plan.disk_modules.empty()) {
         std::string found;
         for (const auto& module : plan.disk_modules) found += " " + module;

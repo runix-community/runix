@@ -376,7 +376,11 @@ let
         target = "/init";
       }
       {
-        source = config.runix.build.mdevConfig;
+        # Without the console font rule: its script is not in the initrd,
+        # and the installed system sets the font itself.
+        source = pkgs.runCommand "runix-initrd-mdev.conf" { } ''
+          grep -v runix-console-font ${config.runix.build.mdevConfig} > "$out" || true
+        '';
         target = "/etc/mdev.conf";
       }
     ];

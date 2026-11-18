@@ -123,8 +123,13 @@ writeShellApplication {
     trap 'exit 130' INT
     trap 'exit 143' TERM
 
+    # Where cache.nixos.org is blocked, the live system found mirrors; a
+    # download that fails on one is retried on the next.
+    mirrors=()
+    if command -v runix-mirrors >/dev/null; then mirrors=(runix-mirrors run); fi
+
     echo "runix-install: building configuration $host in the target store"
-    system=$(${lib.getExe nix} --store "$store" --extra-experimental-features "nix-command flakes" \
+    system=$("''${mirrors[@]}" ${lib.getExe nix} --store "$store" --extra-experimental-features "nix-command flakes" \
       --option build-users-group "" build --no-link --print-out-paths "$configuration.system" "''${nix_args[@]}")
     target_system="$root$system"
     [ -d "$target_system" ] || die "system build did not produce a directory in the target store"
@@ -132,7 +137,7 @@ writeShellApplication {
     ${bash}/bin/bash ${./preflight.sh} "$root" "$install_spec" "$install_bootloader" "$activate"
     if [ "$install_bootloader" -eq 1 ]; then
       echo "runix-install: building the configured bootloader installer"
-      installer=$(${lib.getExe nix} --store "$store" --extra-experimental-features "nix-command flakes" \
+      installer=$("''${mirrors[@]}" ${lib.getExe nix} --store "$store" --extra-experimental-features "nix-command flakes" \
         --option build-users-group "" build --no-link --print-out-paths "$configuration.installBootLoader" "''${nix_args[@]}")
     fi
 

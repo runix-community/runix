@@ -88,6 +88,8 @@ struct Plan {
     std::string domain;
     std::string tunnel_id;
     std::string ssh_key;
+    /// cache.nixos.org was blocked or slow, and a mirror was used.
+    bool mirrors = false;
 };
 
 /// What Nix reports while the system is installed.

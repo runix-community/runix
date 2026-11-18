@@ -109,6 +109,8 @@ struct Settings {
     std::string domain;
     std::string tunnel_id;
     std::string ssh_key;
+    /// Keep switching to mirrors on the installed system, as the install had to.
+    bool mirrors = false;
 };
 
 /// Stable names for the choices, used by the installer's settings file

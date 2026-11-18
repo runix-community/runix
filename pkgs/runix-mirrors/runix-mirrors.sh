@@ -12,6 +12,8 @@
 
 upstream=${RUNIX_UPSTREAM:-https://cache.nixos.org}
 out=${RUNIX_MIRRORS_FILE:-/run/nix/mirrors.conf}
+# The working mirrors, fastest first, for `run` to go through.
+list_file=${out%.conf}.list
 min_speed=${RUNIX_MIN_SPEED:-262144}
 interval=${RUNIX_INTERVAL:-21600}
 
@@ -22,6 +24,8 @@ Usage: runix-mirrors COMMAND
   probe          test cache.nixos.org and the mirrors, write $out
   watch          probe now and again every ${interval}s, restarting nix-daemon on a change
   status         show what Nix uses now
+  run CMD...     run a Nix command; if a download fails, retry it with the
+                 next mirror, until one works or all have failed
   exec CMD...    run CMD with the proxy set, if there is one
 EOF
 }
@@ -49,7 +53,18 @@ human() {
 # Prints a cache's download speed in bytes per second, 0 when it answers but
 # barely moves data, or nothing when it cannot be reached.
 speed() {
-  local cache=$1 sample hash narinfo url status
+  local cache=$1 sample hash narinfo url status code
+  # Nix asks for many paths a cache does not have. A cache must say so at
+  # once (404); one that hangs instead makes every such query a timeout, and
+  # the install fails.
+  # Some hang only now and then, so ask three times.
+  if [ "$cache" != "$upstream" ]; then
+    for hash in 00000000000000000000000000000000 11111111111111111111111111111111 22222222222222222222222222222222; do
+      code=$(curl -sS -o /dev/null --connect-timeout 3 --max-time 3 -w '%{http_code}' \
+        "$cache/$hash.narinfo" 2>/dev/null)
+      if [ "$code" != 404 ]; then return; fi
+    done
+  fi
   for sample in ${RUNIX_SAMPLES:-}; do
     hash=${sample#/nix/store/}
     hash=${hash%%-*}
@@ -78,8 +93,9 @@ write() {
 }
 
 probe() {
-  local base ranked mirror s list priority=10 others
+  local base ranked mirror s list priority=10
   base=$(speed "$upstream")
+  rm -f "$list_file"
   if [ -n "$base" ] && [ "$base" -ge "$min_speed" ]; then
     echo "cache.nixos.org: $(human "$base"), no mirror needed"
     write "# cache.nixos.org works ($(human "$base")); written by runix-mirrors.
@@ -119,16 +135,58 @@ probe() {
     list="$list $mirror?priority=$priority"
     priority=$((priority + 1))
   done <<<"$ranked"
-  others=${RUNIX_SUBSTITUTERS:-}
+  awk '{ print $2 }' <<<"$ranked" >"$list_file"
   # A slow cache.nixos.org stays as the last resort; an unreachable one only
   # adds timeouts.
-  [ -n "$base" ] && others="$others $upstream?priority=90"
+  [ -n "$base" ] && printf '%s\n' "$upstream" >>"$list_file"
   echo "using:$list"
-  write "# cache.nixos.org ${base:+gave $(human "$base")}${base:-was unreachable}; written by runix-mirrors.
-substituters =$list $others
+  use "$list${base:+ $upstream?priority=90}" "cache.nixos.org ${base:+gave $(human "$base")}${base:-was unreachable}"
+}
+
+# Writes the configuration for these substituters, next to the ones that are
+# not cache.nixos.org mirrors.
+use() {
+  write "# $2; written by runix-mirrors.
+substituters = $1 ${RUNIX_SUBSTITUTERS:-}
 connect-timeout = 5
 stalled-download-timeout = 30
+download-attempts = 2
 "
+}
+
+# Runs a Nix command with one mirror at a time. A download error moves on to
+# the next mirror; any other failure is the command's own and ends it.
+run() {
+  local mirrors=() mirror log status=1
+  [ -s "$list_file" ] && mapfile -t mirrors <"$list_file"
+  if [ "${#mirrors[@]}" -le 1 ]; then
+    "$@"
+    return
+  fi
+  log=$(mktemp)
+  for mirror in "${mirrors[@]}"; do
+    use "$mirror" "trying $mirror alone"
+    echo "runix-mirrors: downloading from $mirror" >&2
+    # The daemon reads nix.conf only when it starts.
+    if [ -d /run/runit/service/nix-daemon ]; then
+      sv restart /run/runit/service/nix-daemon >/dev/null 2>&1 || true
+    fi
+    "$@" 2> >(tee "$log" >&2)
+    status=$?
+    wait
+    if [ "$status" -eq 0 ]; then
+      rm -f "$log"
+      return 0
+    fi
+    if ! grep -qE "unable to download|Timeout was reached|Could not resolve|Connection (refused|reset|timed out)|HTTP error 5[0-9][0-9]|error: (cannot|unable to) (substitute|download)" "$log"; then
+      rm -f "$log"
+      return "$status"
+    fi
+    echo "runix-mirrors: $mirror failed, trying the next mirror" >&2
+  done
+  rm -f "$log"
+  echo "runix-mirrors: every mirror failed" >&2
+  return "$status"
 }
 
 watch() {
@@ -159,6 +217,10 @@ case ${1:-} in
   exec)
     shift
     exec "$@"
+    ;;
+  run)
+    shift
+    run "$@"
     ;;
   -h | --help) usage ;;
   *)

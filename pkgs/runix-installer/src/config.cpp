@@ -612,7 +612,13 @@ std::string nix_settings(const Settings& settings) {
            "    # Another binary cache:\n"
            "    # substituters = [ \"https://cache.example.org\" ];\n"
            "    # trusted-public-keys = [ \"cache.example.org-1:...\" ];\n"
-           "  };\n"
+           "  };\n" +
+           (settings.mirrors
+                ? "\n"
+                  "  # cache.nixos.org was blocked or slow while installing. This tests it\n"
+                  "  # every few hours and switches to a working mirror when needed.\n"
+                  "  nix.mirrors.enable = true;\n"
+                : "") +
            "}\n";
 }
 
