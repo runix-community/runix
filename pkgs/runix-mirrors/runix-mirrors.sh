@@ -27,9 +27,10 @@ EOF
 }
 
 load_proxy() {
-  local proxy=${RUNIX_PROXY:-} word
+  local proxy=${RUNIX_PROXY:-} word words
   if [ -z "$proxy" ] && [ -r /proc/cmdline ]; then
-    for word in $(cat /proc/cmdline); do
+    read -ra words </proc/cmdline
+    for word in "${words[@]}"; do
       case $word in runix.proxy=*) proxy=${word#runix.proxy=} ;; esac
     done
   fi

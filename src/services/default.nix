@@ -17,5 +17,6 @@
     ./web.nix
     ./tmpfiles.nix
     ./yggdrasil.nix
+    ./zapret.nix
   ];
 }
