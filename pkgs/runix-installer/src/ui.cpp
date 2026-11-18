@@ -358,19 +358,24 @@ Line entry(const std::string& name, const std::string& detail, std::size_t width
 }
 
 void draw_network(App& app, Rect area) {
-    Rect status = take_rows(area, 1);
-    take_rows(area, 1);
-    Line line;
+    std::vector<Line> lines;
     if (app.connecting) {
-        line = {span(std::string(1, spinner(app)) + " " + i18n::format("Joining {}...", {*app.connecting}), Color::Warn)};
+        lines.push_back({span(std::string(1, spinner(app)) + " " + i18n::format("Joining {}...", {*app.connecting}), Color::Warn)});
+    } else if (app.online == OnlineState::Online && !app.mirror.empty()) {
+        lines.push_back({span("■ " + tr("Online"), Color::Accent, true),
+                         span("  " + i18n::format("through the mirror {}", {app.mirror}), Color::Muted)});
+        lines.push_back({span(tr("cache.nixos.org is blocked or slow here, as in Russia."), Color::Warn)});
+        lines.push_back(muted(tr("Tried every mirror; the fastest working one is used.")));
     } else if (app.online == OnlineState::Online) {
-        line = {span("■ " + tr("Online"), Color::Accent, true)};
+        lines.push_back({span("■ " + tr("Online"), Color::Accent, true)});
     } else if (app.online == OnlineState::Checking) {
-        line = {span(std::string(1, spinner(app)) + " " + tr("Checking the connection..."), Color::Warn)};
+        lines.push_back({span(std::string(1, spinner(app)) + " " + tr("Checking the connection..."), Color::Warn),
+                         span("  " + tr("tries mirrors if blocked"), Color::Muted)});
     } else {
-        line = {span("■ " + tr("Offline"), Color::Error, true), span("  " + tr("wired networks connect by themselves"), Color::Muted)};
+        lines.push_back({span("■ " + tr("Offline"), Color::Error, true), span("  " + tr("wired networks connect by themselves"), Color::Muted)});
     }
-    draw_lines(status, {line});
+    draw_lines(take_rows(area, static_cast<int>(lines.size())), lines);
+    take_rows(area, 1);
 
     if (!app.wireless) {
         draw_lines(area, {muted(tr("No wireless card found."))});

@@ -93,6 +93,7 @@ struct Message {
     enum class Kind { Online, Scanned, Connected, Install, Uploaded };
     Kind kind;
     bool online = false;
+    std::string mirror;
     std::vector<system_probe::WifiNetwork> networks;
     /// For Connected and Uploaded: empty on success.
     std::string error;
@@ -180,6 +181,8 @@ public:
     std::optional<Exit> exit;
 
     OnlineState online = OnlineState::Checking;
+    /// Set when cache.nixos.org is blocked or slow and Nix uses this mirror.
+    std::string mirror;
     bool wireless = false;
     std::vector<system_probe::WifiNetwork> networks;
     ListState network_list;

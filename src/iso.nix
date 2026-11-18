@@ -38,7 +38,8 @@ let
     . /etc/profile
     export HOME=/root USER=root
     cd /root
-    ${lib.getExe installer} || true
+    # runix.proxy=URL on the kernel command line reaches Nix and curl here.
+    runix-mirrors exec ${lib.getExe installer} || true
     exec ${pkgs.bashInteractive}/bin/bash --login
   '';
   shell = pkgs.writeShellScript "runix-live-shell" ''
@@ -47,7 +48,9 @@ let
     cd /root
     exec ${pkgs.bashInteractive}/bin/bash --login
   '';
-  agetty = program: arguments: "${pkgs.util-linux}/bin/agetty --noclear --noissue --skip-login --login-program ${program} ${arguments}";
+  agetty =
+    program: arguments:
+    "${pkgs.util-linux}/bin/agetty --noclear --noissue --skip-login --login-program ${program} ${arguments}";
 
   # What a console installer can need: Wi-Fi and wired network cards, and the
   # GPUs whose drivers take over the console. Everything else in
@@ -80,17 +83,16 @@ let
     "xe"
     "radeon"
   ];
-  installerFirmware =
-    pkgs.runCommand "runix-installer-firmware" { } ''
-      mkdir -p "$out/lib/firmware"
-      cd ${pkgs.linux-firmware}/lib/firmware
-      shopt -s nullglob
-      for path in ${lib.concatStringsSep " " installerFirmwarePaths}; do
-        # Names missing from this linux-firmware release are skipped.
-        [ -e "$path" ] || [ -L "$path" ] || continue
-        cp -a --parents "$path" "$out/lib/firmware/"
-      done
-    '';
+  installerFirmware = pkgs.runCommand "runix-installer-firmware" { } ''
+    mkdir -p "$out/lib/firmware"
+    cd ${pkgs.linux-firmware}/lib/firmware
+    shopt -s nullglob
+    for path in ${lib.concatStringsSep " " installerFirmwarePaths}; do
+      # Names missing from this linux-firmware release are skipped.
+      [ -e "$path" ] || [ -L "$path" ] || continue
+      cp -a --parents "$path" "$out/lib/firmware/"
+    done
+  '';
   firmwarePackages = {
     none = [ ];
     installer = [

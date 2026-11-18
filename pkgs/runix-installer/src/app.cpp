@@ -254,7 +254,9 @@ void App::check_online() {
     last_check_ = Clock::now();
     std::thread([queue = queue_, demo = options.demo]() {
         Message message{Message::Kind::Online};
-        message.online = system_probe::online(demo);
+        auto connection = system_probe::online(demo);
+        message.online = connection.online;
+        message.mirror = connection.mirror;
         queue->push(std::move(message));
     }).detach();
 }
@@ -554,6 +556,7 @@ void App::on_message(Message message) {
         case Message::Kind::Online:
             checking_ = false;
             online = message.online ? OnlineState::Online : OnlineState::Offline;
+            mirror = message.mirror;
             break;
         case Message::Kind::Scanned:
             scanning = false;

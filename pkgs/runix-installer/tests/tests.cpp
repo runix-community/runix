@@ -466,6 +466,13 @@ TEST(partitions_are_read_from_lsblk) {
     CHECK(system_probe::parse_partitions("not json").empty());
 }
 
+TEST(the_chosen_mirror_is_read_from_the_probe) {
+    CHECK(system_probe::parse_mirror("cache.nixos.org: unreachable, trying mirrors\n"
+                                     "using: https://ncproxy.vizqq.cc?priority=10 https://cache.nixos.kz?priority=11\n") ==
+          "ncproxy.vizqq.cc");
+    CHECK(system_probe::parse_mirror("cache.nixos.org: 2.0 MB/s, no mirror needed\n").empty());
+}
+
 TEST(scan_results_are_merged_by_name) {
     std::string output =
         "bssid / frequency / signal level / flags / ssid\n"

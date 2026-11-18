@@ -20,9 +20,77 @@ let
     lib.concatStrings (
       lib.mapAttrsToList (name: value: "${name} = ${render value}\n") config.nix.settings
     )
+    # Mirrors chosen at run time by runix-mirrors; ignored while missing.
+    + lib.optionalString mirrors.enable "!include /run/nix/mirrors.conf\n"
+  );
+
+  mirrors = config.nix.mirrors;
+  # The tool with this system's settings, for the service, the installer and
+  # by hand alike.
+  mirrorsTool = pkgs.writeShellScriptBin "runix-mirrors" ''
+    ${lib.toShellVars mirrorsSettings}
+    export ${lib.concatStringsSep " " (lib.attrNames mirrorsSettings)}
+    exec ${pkgs.callPackage ../pkgs/runix-mirrors { }}/bin/runix-mirrors "$@"
+  '';
+  mirrorsSettings = {
+    RUNIX_MIRRORS = lib.concatStringsSep " " mirrors.candidates;
+    RUNIX_SUBSTITUTERS = lib.concatStringsSep " " otherSubstituters;
+    RUNIX_MIN_SPEED = toString mirrors.minimumSpeed;
+    RUNIX_INTERVAL = toString mirrors.interval;
+    # Store paths sure to be on cache.nixos.org, to measure real downloads.
+    RUNIX_SAMPLES = "${pkgs.nix} ${pkgs.coreutils} ${pkgs.glibc}";
+  }
+  // lib.optionalAttrs (config.nix.proxy != null) { RUNIX_PROXY = config.nix.proxy; };
+  # What runix-mirrors keeps next to the mirrors, which replace cache.nixos.org.
+  otherSubstituters = lib.filter (url: url != "https://cache.nixos.org") (
+    lib.toList (config.nix.settings.substituters or [ ])
+    ++ lib.toList (config.nix.settings.extra-substituters or [ ])
   );
 in
 {
+  options.nix.mirrors = {
+    enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Test cache.nixos.org at boot and every few hours. When it is blocked
+        or slower than minimumSpeed, Nix uses the fastest working mirror
+        instead. Mirrors are contacted only then, and every download is still
+        checked against cache.nixos.org's signing key. See `runix-mirrors status`.
+      '';
+    };
+    candidates = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [
+        "https://mirror.yandex.ru/nixos"
+        "https://nixos-cache-proxy.cofob.dev"
+        "https://cache.nixos.kz"
+        "https://ncproxy.vizqq.cc"
+      ];
+      description = "Mirrors of cache.nixos.org to try, in no particular order.";
+    };
+    minimumSpeed = lib.mkOption {
+      type = lib.types.ints.positive;
+      default = 262144;
+      description = "Download speed from cache.nixos.org, in bytes per second, below which mirrors are tried.";
+    };
+    interval = lib.mkOption {
+      type = lib.types.ints.positive;
+      default = 21600;
+      description = "Seconds between tests.";
+    };
+  };
+
+  options.nix.proxy = lib.mkOption {
+    type = lib.types.nullOr lib.types.str;
+    default = null;
+    example = "http://192.168.1.10:8080";
+    description = ''
+      HTTP proxy for Nix's downloads. Without it, the runix.proxy=URL kernel
+      parameter is used, which also works on the live installer.
+    '';
+  };
+
   options.runix.nixPath = lib.mkOption {
     type = lib.types.listOf lib.types.str;
     default = [ "nixpkgs=${pkgs.path}" ];
@@ -86,6 +154,7 @@ in
   config.runix.packages = [
     (pkgs.callPackage ../pkgs/runix { })
     (pkgs.callPackage ../pkgs/runix-install { })
+    mirrorsTool
     pkgs.nix
     pkgs.cacert
   ];
@@ -114,7 +183,11 @@ in
     ''
   ];
   config.runix.services.nix-daemon = {
-    command = "${pkgs.nix}/bin/nix-daemon";
+    # Through runix-mirrors only to pick up the proxy.
+    command = "${mirrorsTool}/bin/runix-mirrors exec ${pkgs.nix}/bin/nix-daemon";
     check = "test -S /nix/var/nix/daemon-socket/socket";
+  };
+  config.runix.services.nix-mirrors = lib.mkIf mirrors.enable {
+    command = "${mirrorsTool}/bin/runix-mirrors watch";
   };
 }

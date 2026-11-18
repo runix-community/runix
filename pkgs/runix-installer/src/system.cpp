@@ -108,9 +108,24 @@ std::vector<Partition> partitions(bool demo, const std::string& disk) {
     return text ? parse_partitions(*text) : std::vector<Partition>{};
 }
 
-bool online(bool demo) {
-    if (demo) return false;
-    return process::capture({"curl", "-fsS", "--max-time", "5", "https://cache.nixos.org/nix-cache-info"}).ok();
+std::string parse_mirror(const std::string& probe_output) {
+    for (const auto& line : util::split(probe_output, '\n')) {
+        if (line.rfind("using: ", 0) != 0) continue;
+        auto url = line.substr(7);
+        url = url.substr(0, url.find_first_of(" ?"));
+        if (auto scheme = url.find("://"); scheme != std::string::npos) url = url.substr(scheme + 3);
+        return url;
+    }
+    return {};
+}
+
+Connection online(bool demo) {
+    if (demo) return {};
+    // Tests cache.nixos.org and, where it is blocked or throttled, switches
+    // Nix to a mirror that works. Online means Nix can download from either.
+    auto probe = process::capture({"runix-mirrors", "probe"});
+    if (probe.ok()) return {true, parse_mirror(probe.out)};
+    return {process::capture({"curl", "-fsS", "--max-time", "5", "https://cache.nixos.org/nix-cache-info"}).ok(), {}};
 }
 
 bool wireless_available(bool demo) {

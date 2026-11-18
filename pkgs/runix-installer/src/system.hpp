@@ -48,7 +48,14 @@ std::vector<Disk> disks(bool demo);
 std::vector<Partition> parse_partitions(const std::string& json);
 std::vector<Partition> partitions(bool demo, const std::string& disk);
 
-bool online(bool demo);
+struct Connection {
+    bool online = false;
+    /// The mirror Nix uses when cache.nixos.org is blocked or slow, or empty.
+    std::string mirror;
+};
+/// The mirror runix-mirrors chose, from its "using: URL?priority=10 ..." line.
+std::string parse_mirror(const std::string& probe_output);
+Connection online(bool demo);
 bool wireless_available(bool demo);
 std::vector<WifiNetwork> parse_scan(const std::string& output);
 std::vector<WifiNetwork> scan(bool demo);
