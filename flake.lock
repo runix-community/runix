@@ -68,14 +68,15 @@
           "nixpkgs"
         ],
         "shojiwm": "shojiwm",
+        "vw": "vw_2",
         "zwwm": "zwwm_2"
       },
       "locked": {
-        "lastModified": 1794848802,
-        "narHash": "sha256-XX1YAXERdPE7gkVLvZMuA6fJW/bbvV/N9gp5BioB8iU=",
+        "lastModified": 1795212726,
+        "narHash": "sha256-lVWkJtzFeS6CWgBAT1TjC9eOjegRsEBmhtTMPC4nlV4=",
         "owner": "runix-community",
         "repo": "runixpkgs",
-        "rev": "cb65641cd788df714e955ce7894652cf2cb32344",
+        "rev": "8ce2266ab1eaf1aeca984a74318ca4e24a70e3d3",
         "type": "github"
       },
       "original": {
@@ -109,6 +110,22 @@
         ],
         "zwwm": "zwwm"
       },
+      "locked": {
+        "lastModified": 1794853123,
+        "narHash": "sha256-quEX96N2vbS4SPAlpN7jiLZcp7pLADwsu/f1Wyvpbzc=",
+        "owner": "binarylinuxx",
+        "repo": "vw",
+        "rev": "0959b992c934d4837f5c61b0d415a4ec61b64da8",
+        "type": "github"
+      },
+      "original": {
+        "owner": "binarylinuxx",
+        "repo": "vw",
+        "type": "github"
+      }
+    },
+    "vw_2": {
+      "flake": false,
       "locked": {
         "lastModified": 1794853123,
         "narHash": "sha256-quEX96N2vbS4SPAlpN7jiLZcp7pLADwsu/f1Wyvpbzc=",

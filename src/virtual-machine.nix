@@ -7,9 +7,13 @@
 let
   cfg = config.runix;
   qemu = cfg.virtualMachine.qemuPackage;
+  aarch64 = pkgs.stdenv.hostPlatform.isAarch64;
+  # aarch64 has no PC machine: QEMU's generic "virt" board, with the host CPU.
+  qemuSystem =
+    if aarch64 then "qemu-system-aarch64 -machine virt -cpu host" else "qemu-system-x86_64";
   kernelParams = lib.concatStringsSep " " (
     [
-      "console=ttyS0,115200n8"
+      "console=${if aarch64 then "ttyAMA0" else "ttyS0"},115200n8"
       "quiet"
       "loglevel=3"
       "panic=1"
@@ -32,7 +36,7 @@ let
       format_root=1
     fi
 
-    exec ${qemu}/bin/qemu-system-x86_64 \
+    exec ${qemu}/bin/${qemuSystem} \
       -enable-kvm \
       -m ${toString cfg.virtualMachine.memory} \
       -smp ${toString cfg.virtualMachine.cpus} \

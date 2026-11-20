@@ -46,7 +46,7 @@
            bspwm = pkgs.bspwm;
            inherit (fetchPackages) fastfetch fastfetch-unwrapped pfetch;
            inherit (desktopPackages) hyprland labwc niri;
-           inherit (pkgs) zwwm shojiwm driftwm;
+           inherit (pkgs) zwwm shojiwm driftwm vw vw-static;
           qtile = pkgs.python3Packages.qtile;
           sxhkd = pkgs.sxhkd;
           consoleSource = pkgs.writeText "runix-console.c" ''
@@ -150,18 +150,16 @@
             runix-boot-theme
              sxhkd
              shojiwm
+             vw
+             vw-static
              zwwm
             ;
         }
-        // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
+        // {
           inherit (vm.config.runix.build) vm;
-        }
-        // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") (
-          nixpkgs.lib.mapAttrs' (name: desktop: nixpkgs.lib.nameValuePair "profile-${name}" (profile desktop)) profiles
-        )
-        // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
           inherit (live.config.runix.build) iso;
         }
+        // nixpkgs.lib.mapAttrs' (name: desktop: nixpkgs.lib.nameValuePair "profile-${name}" (profile desktop)) profiles
       );
 
       checks = forAllSystems (

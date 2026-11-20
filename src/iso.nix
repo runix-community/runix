@@ -106,7 +106,7 @@ let
   closure = pkgs.closureInfo { rootPaths = [ cfg.build.system ]; };
   compressionArguments =
     if iso.compression == "xz" then
-      "-comp xz -Xbcj x86 -Xdict-size 100%"
+      "-comp xz -Xbcj ${if pkgs.stdenv.hostPlatform.isAarch64 then "arm64" else "x86"} -Xdict-size 100%"
     else
       "-comp zstd -Xcompression-level ${toString iso.compressionLevel}";
   store =
@@ -138,6 +138,12 @@ let
     ${bootEntry "Runix Installer (copy to RAM, remove the USB after boot)" [ "runix.toram" ]}
   '';
 
+  # x86_64 boots from BIOS and UEFI; aarch64 from UEFI only.
+  bios = pkgs.stdenv.hostPlatform.isx86_64;
+  efiFile = if pkgs.stdenv.hostPlatform.isAarch64 then "BOOTAA64.EFI" else "BOOTX64.EFI";
+  biosBoot = lib.optionalString bios "-b boot/limine/limine-bios-cd.bin -no-emul-boot -boot-load-size 4 -boot-info-table";
+  limineFiles = lib.optionals bios [ "limine-bios.sys" "limine-bios-cd.bin" ] ++ [ "limine-uefi-cd.bin" efiFile ];
+
   image =
     pkgs.runCommand fileName
       {
@@ -148,9 +154,9 @@ let
       }
       ''
         limine_files=${iso.liminePackage}/share/limine
-        for file in limine-bios.sys limine-bios-cd.bin limine-uefi-cd.bin BOOTX64.EFI; do
+        for file in ${lib.concatStringsSep " " limineFiles}; do
           if [ ! -e "$limine_files/$file" ]; then
-            echo "runix.iso.liminePackage has no $file; it must be built with BIOS, CD, and UEFI support" >&2
+            echo "runix.iso.liminePackage has no $file; it must be built with ${if bios then "BIOS, CD, and UEFI" else "CD and UEFI"} support" >&2
             exit 1
           fi
         done
@@ -162,19 +168,17 @@ let
         { cat $theme/theme.conf
           echo 'wallpaper: boot():/boot/limine/background.png'
           cat ${limineConfig}; } > iso_root/boot/limine/limine.conf
-        cp "$limine_files"/limine-bios.sys "$limine_files"/limine-bios-cd.bin \
-          "$limine_files"/limine-uefi-cd.bin iso_root/boot/limine/
-        cp "$limine_files"/BOOTX64.EFI iso_root/EFI/BOOT/
+        cp ${lib.concatMapStringsSep " " (file: "\"$limine_files\"/${file}") (lib.filter (file: file != efiFile) limineFiles)} iso_root/boot/limine/
+        cp "$limine_files"/${efiFile} iso_root/EFI/BOOT/
         cp ${store} iso_root/runix/nix-store.squashfs
 
         mkdir -p "$out/iso"
         xorriso -as mkisofs -iso-level 3 -r -J \
-          -V ${lib.escapeShellArg iso.volumeId} \
-          -b boot/limine/limine-bios-cd.bin -no-emul-boot -boot-load-size 4 -boot-info-table \
+          -V ${lib.escapeShellArg iso.volumeId} ${biosBoot} \
           --efi-boot boot/limine/limine-uefi-cd.bin -efi-boot-part --efi-boot-image \
           --protective-msdos-label \
           -o "$out/iso/${fileName}" iso_root
-        limine bios-install "$out/iso/${fileName}"
+        ${lib.optionalString bios ''limine bios-install "$out/iso/${fileName}"''}
       '';
 in
 {
@@ -345,8 +349,8 @@ in
   config = lib.mkIf iso.enable {
     assertions = [
       {
-        assertion = pkgs.stdenv.hostPlatform.isx86_64;
-        message = "runix.iso currently supports only x86_64-linux";
+        assertion = pkgs.stdenv.hostPlatform.isx86_64 || pkgs.stdenv.hostPlatform.isAarch64;
+        message = "runix.iso supports x86_64-linux and aarch64-linux";
       }
       {
         assertion = !cfg.virtualMachine.enable;
